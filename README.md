@@ -4,6 +4,8 @@ A detector for oil and gas storage tanks that tells a **broken part** from a **c
 
 Built for Hibiscus LEAP 2026 (Downstream Oil & Gas Safety, ICT Cybersecurity), Brunei.
 
+**Try the website:** [realkint.github.io/fault-or-attack](https://realkint.github.io/fault-or-attack/)
+
 ![The detector deciding live](demo.gif)
 
 ## The idea
