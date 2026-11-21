@@ -97,3 +97,7 @@ Photographs on the website are shown in greyscale, which is a change to the orig
 HAI dataset: NSR/ETRI, [github.com/icsdataset/hai](https://github.com/icsdataset/hai).
 
 The Brunei reporting details (BruCERT contacts, Cybersecurity Order 2023) were checked on official sites in November 2026. This is a student project, not legal advice.
+
+## Licence
+
+The code is under the MIT licence (see `LICENSE`). The photographs keep their own licences, listed above, and the HAI dataset keeps its own terms.
