@@ -1,0 +1,44 @@
+Loading data/hai/train1.csv (normal only) and data/hai/test2.csv (normal + attacks)...
+
+Calibrating on normal data only:
+  mass balance             CUSUM alarm threshold   1077.3
+  level controller         CUSUM alarm threshold    110.9
+  outflow controller       CUSUM alarm threshold     28.2
+  level valve tracking     CUSUM alarm threshold     75.9
+  outflow valve tracking   CUSUM alarm threshold     18.7
+  exact replay             SWITCHED OFF: fires on 28 s of normal training data
+
+Per attack event (detected = any alarm from its start to 60 s after it ends):
+  ID    Target                                                    Scope   Detected  Delay   Checks that fired
+  A201  P1_B2016 pressure setpoint                                other   no        -       -
+  A202  P1_FCV03D outflow-valve command (stealthy)                tank    no        -       -
+  A203  P2_AutoSD turbine setpoint                                other   no        -       -
+  A204  P1_PCV01D pressure valve + P2_SCO                         other   no        -       -
+  A205  P3_LCV01D (another process)                               other   no        -       -
+  A206  P1_B2016, P1_PIT01 pressure + P2 turbine                  other   no        -       -
+  A207  P1_LCV01D level-valve command                             tank    yes       14 s    mass balance, level controller, level valve tracking
+  A208  P2_SCO, P2_SIT01 turbine                                  other   no        -       -
+  A209  P1_B2016, P1_PIT01, P1_FIT01 pressure loop                other   no        -       -
+  A210  P2_AutoSD turbine setpoint                                other   no        -       -
+  A211  P1_PCV01D, P1_PIT01 pressure loop                         other   no        -       -
+  A212  P3_LCP01D (another process)                               other   no        -       -
+  A213  P1_PP04 heater pump (stealthy)                            other   no        -       -
+  A214  P3_LCV01D (another process)                               other   no        -       -
+  A215  P1_B3005 outflow setpoint + P1_FT03 sensor spoof          tank    yes       24 s    outflow controller, outflow valve tracking
+  A216  P1_B2016 pressure setpoint + P1_B3005 outflow setpoint    tank    yes       22 s    outflow controller
+  A217  P1_FCV03D outflow-valve command                           tank    yes       39 s    outflow controller, outflow valve tracking
+
+False alarms (alarm events starting during normal operation):
+  mass balance               0
+  level controller           0
+  outflow controller         0
+  level valve tracking       0
+  outflow valve tracking     1
+  never-seen setpoint        0
+  all checks combined        1  over 19.4 h = 0.05 per hour
+
+Summary
+  Tank attacks detected:   4/5
+  All attacks detected:    4/17
+  False alarm events:      1 in 19.4 h of normal operation
+  Note: HAI has no labelled equipment faults, so FAULT-vs-ATTACK accuracy cannot be scored here.

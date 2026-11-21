@@ -1,0 +1,26 @@
+
+Scenario: Replay attack   |   duration: permanent   |   backup sensor: off
+Truth:            ATTACK (Cyberattack (compromised trusted device))
+What happens:     A compromised device already on the network records 30 s of healthy readings and plays them back, fakes the motor feedback, and secretly forces the pump ON (the Stuxnet pattern).
+How it is caught: Real sensor noise never repeats, so an exact copy is a recording. The secret pump probes are also missing from the recording.
+
+Level from second 40:     min 40%   max 100%   final 100%
+Mean pump duty:            4%  (healthy is about 50%)
+Pump really running:       92%  (differs from what the controller commanded)
+First alarm:               23 s after it started
+Worst status:              Overflow
+
+FAULT OR ATTACK?
+  Detector verdict:        ATTACK - False data injection  (3 s after it started)
+  Why:                     Sensor A's mass-balance error typically jumps by 0.9%/s (healthy is about 0.3). Physical faults are smooth; forged data is not.
+  MITRE ATT&CK for ICS:    T0856 Spoof Reporting Message, T0832 Manipulation of View
+  Recommended action:      Put the pump in manual or a safe state, cut the control network off from outside connections (the attacker may be far away, coming in over the network), keep the logs, and call the cybersecurity incident team. In Brunei, report it to Cyber Security Brunei through BruCERT (hotline 245 8001, cert@brucert.org.bn); owners of critical information infrastructure must also notify the Commissioner of Cybersecurity.
+  Correct call:            yes
+  Evidence over time:
+    second  41: UNKNOWN Mass balance drifting
+    second  43: ATTACK  False data injection
+    second  48: ATTACK  Replay attack
+    second  71: UNKNOWN Mass balance drifting
+    second  74: ATTACK  False data injection
+    second  77: ATTACK  Replay attack
+

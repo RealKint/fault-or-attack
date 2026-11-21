@@ -1,0 +1,22 @@
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+
+Scenario: Leak   |   duration: permanent   |   backup sensor: off
+Truth:            FAULT (Process fault)
+What happens:     Extra outflow. The controller compensates, so the level looks fine and the fault hides.
+How it is caught: Watch pump duty and do a mass balance (more pumping for the same demand).
+
+Level from second 40:     min 25%   max 47%   final 47%
+Mean valve command:        85% open  (healthy is about 50%)
+Valve really open:         82%  (differs from what the controller commanded)
+First alarm:               never raised an alarm
+Worst status:              Within limits
+
+FAULT OR ATTACK?
+  Detector verdict:        FAULT - Leak or sensor drift  (26 s after it started)
+  Why:                     Sensor A changes -1.5%/s differently from what the pump and outflow meter predict, and the error is steady, as physical faults are. A probe confirmed sensor A is live, so this is not a recording.
+  Recommended action:      Raise a maintenance work order and field-check the equipment named above; keep running only if safe.
+  Correct call:            yes
+  Evidence over time:
+    second  46: UNKNOWN Mass balance drifting
+    second  66: FAULT   Leak or sensor drift
+

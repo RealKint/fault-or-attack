@@ -1,0 +1,34 @@
+Loading data/hai/train1.csv (normal only) and data/hai/test1.csv (normal + attacks)...
+
+Calibrating on normal data only:
+  mass balance             CUSUM alarm threshold   1077.3
+  level controller         CUSUM alarm threshold    110.9
+  outflow controller       CUSUM alarm threshold     28.2
+  level valve tracking     CUSUM alarm threshold     75.9
+  outflow valve tracking   CUSUM alarm threshold     18.7
+  exact replay             SWITCHED OFF: fires on 28 s of normal training data
+
+Per attack event (detected = any alarm from its start to 60 s after it ends):
+  ID    Target                                                    Scope   Detected  Delay   Checks that fired
+  A101  P1_PCV01D pressure-valve command                          other   no        -       -
+  A102  P1_LCV01D level-valve command (stealthy)                  tank    yes       4 s     level controller, level valve tracking
+  A103  P1_FCV03D outflow-valve command + P1_FT03 sensor spoof    tank    yes       7 s     outflow controller, outflow valve tracking
+  A104  P3_LCV01D (another process)                               other   no        -       -
+  A105  P1_B3004 level setpoint                                   tank    yes       58 s    mass balance, level controller, outflow controller, level valve tracking
+  A106  P1_PP04 heater pump                                       other   no        -       -
+  A107  P1_FCV01D temperature valve                               other   no        -       -
+
+False alarms (alarm events starting during normal operation):
+  mass balance               0
+  level controller           2
+  outflow controller         2
+  level valve tracking       2
+  outflow valve tracking     1
+  never-seen setpoint        1
+  all checks combined        3  over 22.6 h = 0.13 per hour
+
+Summary
+  Tank attacks detected:   3/3
+  All attacks detected:    3/7
+  False alarm events:      3 in 22.6 h of normal operation
+  Note: HAI has no labelled equipment faults, so FAULT-vs-ATTACK accuracy cannot be scored here.

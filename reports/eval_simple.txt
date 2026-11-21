@@ -1,0 +1,27 @@
+
+Detector accuracy on the simple plant (on/off pump)
+over 20 seeds x 3 duration modes x backup on/off
+Scenario                Truth      Correct   Mean time to verdict   Most common culprit
+---------------------------------------------------------------------------------------
+Sensor drift            FAULT     120/120                   5.5 s   Leak or sensor drift
+Sensor stuck            FAULT     120/120                   4.0 s   Sensor stuck
+Pump failure            FAULT     120/120                   2.0 s   Pump failure
+Valve stuck open        FAULT     120/120                   0.0 s   Valve stuck open
+Leak                    FAULT     120/120                  12.8 s   Leak or sensor drift
+Power loss              FAULT     120/120                   0.0 s   Power loss
+False data injection    ATTACK    120/120                   7.5 s   False data injection
+Replay attack           ATTACK    120/120                  10.1 s   False data injection
+Replay + fresh noise *  ATTACK    113/120                  11.3 s   False data injection
+Stealthy spoof *        ATTACK    120/120                   5.5 s   Disguised attack
+Command injection       ATTACK    120/120                   0.0 s   Command injection
+Denial of service       ATTACK    120/120                   1.5 s   Denial of service
+---------------------------------------------------------------------------------------
+Overall: 1433/1440 correct (99.5%).   * = smart attacker added after the detector was first tuned
+Baselines: always say FAULT 50%,  always say ATTACK 50%,  coin flip 50%
+
+                called FAULT  called ATTACK   UNKNOWN   nothing
+truly FAULT              720              0         0         0
+truly ATTACK               5            713         2         0
+
+False alarms: 0/40 short healthy runs,  0 in 10 hours of healthy plant time
+

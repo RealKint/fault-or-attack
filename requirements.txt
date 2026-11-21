@@ -1,0 +1,3 @@
+# The simulator and detector use only the Python standard library (Python 3.10+).
+# matplotlib is needed only for pictures, GIFs and the live demo (--plot, --save, --live, --dashboard).
+matplotlib>=3.8

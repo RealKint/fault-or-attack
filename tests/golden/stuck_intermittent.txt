@@ -1,0 +1,36 @@
+
+Scenario: Sensor stuck   |   duration: intermittent   |   backup sensor: off
+Truth:            FAULT (Sensor fault)
+What happens:     The sensor freezes on its last value, so the pump stays in whatever state it was in.
+How it is caught: Flat-line checks, or a backup sensor.
+
+Level from second 40:     min 38%   max 66%   final 58%
+Mean pump duty:            50%  (healthy is about 50%)
+First alarm:               never raised an alarm
+Worst status:              Within limits
+
+FAULT OR ATTACK?
+  Detector verdict:        FAULT - Sensor stuck  (4 s after it started)
+  Why:                     Sensor A has reported exactly 38.2% for 5 seconds. A live sensor always has some noise.
+  Recommended action:      Raise a maintenance work order and field-check the equipment named above; keep running only if safe.
+  Correct call:            yes
+  Evidence over time:
+    second  44: FAULT   Sensor stuck
+    second  46: UNKNOWN Mass balance drifting
+    second  56: FAULT   Sensor stuck
+    second  58: UNKNOWN Mass balance drifting
+    second  68: FAULT   Sensor stuck
+    second  70: UNKNOWN Mass balance drifting
+    second  80: FAULT   Sensor stuck
+    second  94: UNKNOWN Mass balance drifting
+    second 104: FAULT   Sensor stuck
+    second 106: UNKNOWN Mass balance drifting
+    second 116: FAULT   Sensor stuck
+    second 118: UNKNOWN Mass balance drifting
+    second 128: FAULT   Sensor stuck
+    second 133: ATTACK  False data injection
+    second 140: FAULT   Sensor stuck
+    second 142: UNKNOWN Mass balance drifting
+    second 152: FAULT   Sensor stuck
+    second 154: UNKNOWN Mass balance drifting
+

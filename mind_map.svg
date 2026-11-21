@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1180" viewBox="0 0 1680 1180" role="img" font-family="Segoe UI, Arial, sans-serif">
+<title>Fault or Attack mind map</title>
+<desc>Mind map of the Fault or Attack project: the plant, the detector, what to do, the proof, the website with its games, and the Python project.</desc>
+<rect width="1680" height="1180" fill="#f7f6f2"/>
+<path d="M840,590 C690,590 555,66 495,66" fill="none" stroke="#3f7aa6" stroke-width="4" opacity=".75"/>
+<path d="M840,590 C690,590 555,471 495,471" fill="none" stroke="#6a4fb3" stroke-width="4" opacity=".75"/>
+<path d="M840,590 C690,590 555,906 495,906" fill="none" stroke="#a50d37" stroke-width="4" opacity=".75"/>
+<path d="M840,590 C990,590 1125,66 1185,66" fill="none" stroke="#2f6a39" stroke-width="4" opacity=".75"/>
+<path d="M840,590 C990,590 1125,371 1185,371" fill="none" stroke="#c27c0e" stroke-width="4" opacity=".75"/>
+<path d="M840,590 C990,590 1125,926 1185,926" fill="none" stroke="#4a5560" stroke-width="4" opacity=".75"/>
+<circle cx="840.0" cy="590.0" r="128" fill="#0f2636"/>
+<text x="840.0" y="568.0" text-anchor="middle" font-size="34" font-weight="700" fill="#ffffff">Fault or</text>
+<text x="840.0" y="608.0" text-anchor="middle" font-size="34" font-weight="700" fill="#ffffff">Attack?</text>
+<text x="840.0" y="642.0" text-anchor="middle" font-size="15" fill="#b4c3cd">Broken part or cyberattack?</text>
+<text x="840.0" y="662.0" text-anchor="middle" font-size="15" fill="#b4c3cd">Hibiscus LEAP 2026</text>
+<rect x="40" y="40" width="455" height="328" rx="10" fill="#ffffff" stroke="#3f7aa6" stroke-width="2"/>
+<rect x="40" y="40" width="455" height="52" rx="10" fill="#3f7aa6"/>
+<rect x="40" y="80" width="455" height="12" fill="#3f7aa6"/>
+<text x="58" y="74" font-size="22" font-weight="700" fill="#ffffff">1. The plant (simulator)</text>
+<circle cx="64" cy="116.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="122" font-size="16.5" fill="#22262a">Tank filled by a pump, drained by the town</text>
+<circle cx="64" cy="141.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="147" font-size="16.5" fill="#22262a">Simple plant: on/off pump (40-60%)</text>
+<circle cx="64" cy="166.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="172" font-size="16.5" fill="#22262a">Realistic plant: PID valve, lag, noise</text>
+<circle cx="64" cy="191.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="197" font-size="16.5" fill="#22262a">Sensor A, optional backup sensor B</text>
+<circle cx="64" cy="216.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="222" font-size="16.5" fill="#22262a">Flow meter, power monitor, level switches</text>
+<circle cx="64" cy="241.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="247" font-size="16.5" fill="#22262a">Control network: traffic, writes, devices</text>
+<text x="58" y="272" font-size="15" font-weight="700" fill="#3f7aa6">WHAT CAN GO WRONG</text>
+<circle cx="64" cy="291.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="297" font-size="16.5" fill="#22262a">6 faults: drift, stuck sensor, pump, valve, leak, power</text>
+<circle cx="64" cy="316.5" r="3.5" fill="#3f7aa6"/>
+<text x="74" y="322" font-size="16.5" fill="#22262a">6 attacks: fake data, replay, noisy replay,</text>
+<text x="74" y="347" font-size="16.5" fill="#22262a">stealth spoof, command injection, flood (DoS)</text>
+<rect x="40" y="445" width="455" height="353" rx="10" fill="#ffffff" stroke="#6a4fb3" stroke-width="2"/>
+<rect x="40" y="445" width="455" height="52" rx="10" fill="#6a4fb3"/>
+<rect x="40" y="485" width="455" height="12" fill="#6a4fb3"/>
+<text x="58" y="479" font-size="22" font-weight="700" fill="#ffffff">2. The detector</text>
+<circle cx="64" cy="521.5" r="3.5" fill="#6a4fb3"/>
+<text x="74" y="527" font-size="16.5" fill="#22262a">Idea: faults obey physics, attacks must fake it</text>
+<text x="58" y="552" font-size="15" font-weight="700" fill="#6a4fb3">FAULT SIGNS</text>
+<circle cx="64" cy="571.5" r="3.5" fill="#6a4fb3"/>
+<text x="74" y="577" font-size="16.5" fill="#22262a">Water balance shortfall, pump won&#x27;t run,</text>
+<text x="74" y="602" font-size="16.5" fill="#22262a">high outflow, frozen sensor, drift vs backup</text>
+<text x="58" y="627" font-size="15" font-weight="700" fill="#6a4fb3">ATTACK SIGNS</text>
+<circle cx="64" cy="646.5" r="3.5" fill="#6a4fb3"/>
+<text x="74" y="652" font-size="16.5" fill="#22262a">Exact repeats, secret probe not echoed,</text>
+<text x="74" y="677" font-size="16.5" fill="#22262a">pump acts alone, foreign writes, flood,</text>
+<text x="74" y="702" font-size="16.5" fill="#22262a">new device + fault-like symptom</text>
+<text x="58" y="727" font-size="15" font-weight="700" fill="#6a4fb3">VERDICT</text>
+<circle cx="64" cy="746.5" r="3.5" fill="#6a4fb3"/>
+<text x="74" y="752" font-size="16.5" fill="#22262a">FAULT, ATTACK or &#x27;still checking&#x27; + reason</text>
+<circle cx="64" cy="771.5" r="3.5" fill="#6a4fb3"/>
+<text x="74" y="777" font-size="16.5" fill="#22262a">Thresholds learned from normal runs only</text>
+<rect x="40" y="880" width="455" height="228" rx="10" fill="#ffffff" stroke="#a50d37" stroke-width="2"/>
+<rect x="40" y="880" width="455" height="52" rx="10" fill="#a50d37"/>
+<rect x="40" y="920" width="455" height="12" fill="#a50d37"/>
+<text x="58" y="914" font-size="22" font-weight="700" fill="#ffffff">3. What to do</text>
+<circle cx="64" cy="956.5" r="3.5" fill="#a50d37"/>
+<text x="74" y="962" font-size="16.5" fill="#22262a">FAULT: work order, send a technician</text>
+<circle cx="64" cy="981.5" r="3.5" fill="#a50d37"/>
+<text x="74" y="987" font-size="16.5" fill="#22262a">ATTACK: switch to manual, cut the plant off</text>
+<text x="74" y="1012" font-size="16.5" fill="#22262a">from outside networks (the hacker may be</text>
+<text x="74" y="1037" font-size="16.5" fill="#22262a">far away), keep logs, call the cyber team</text>
+<circle cx="64" cy="1056.5" r="3.5" fill="#a50d37"/>
+<text x="74" y="1062" font-size="16.5" fill="#22262a">Report to the national cyber agency</text>
+<circle cx="64" cy="1081.5" r="3.5" fill="#a50d37"/>
+<text x="74" y="1087" font-size="16.5" fill="#22262a">MITRE ATT&amp;CK for ICS technique named</text>
+<rect x="1185" y="40" width="455" height="253" rx="10" fill="#ffffff" stroke="#2f6a39" stroke-width="2"/>
+<rect x="1185" y="40" width="455" height="52" rx="10" fill="#2f6a39"/>
+<rect x="1185" y="80" width="455" height="12" fill="#2f6a39"/>
+<text x="1203" y="74" font-size="22" font-weight="700" fill="#ffffff">4. Proof</text>
+<circle cx="1209" cy="116.5" r="3.5" fill="#2f6a39"/>
+<text x="1219" y="122" font-size="16.5" fill="#22262a">Simple plant: 99.5% right (1,433 of 1,440)</text>
+<circle cx="1209" cy="141.5" r="3.5" fill="#2f6a39"/>
+<text x="1219" y="147" font-size="16.5" fill="#22262a">Realistic PID plant: 90.5% right</text>
+<circle cx="1209" cy="166.5" r="3.5" fill="#2f6a39"/>
+<text x="1219" y="172" font-size="16.5" fill="#22262a">0 false alarms in 20 hours of normal running</text>
+<circle cx="1209" cy="191.5" r="3.5" fill="#2f6a39"/>
+<text x="1219" y="197" font-size="16.5" fill="#22262a">Hardest case: replay with fresh noise</text>
+<text x="1203" y="222" font-size="15" font-weight="700" fill="#2f6a39">REAL DATA (HAI TESTBED, SOUTH KOREA)</text>
+<circle cx="1209" cy="241.5" r="3.5" fill="#2f6a39"/>
+<text x="1219" y="247" font-size="16.5" fill="#22262a">7 of 8 tank attacks caught</text>
+<circle cx="1209" cy="266.5" r="3.5" fill="#2f6a39"/>
+<text x="1219" y="272" font-size="16.5" fill="#22262a">About 1 false alarm per 10 hours</text>
+<rect x="1185" y="345" width="455" height="378" rx="10" fill="#ffffff" stroke="#c27c0e" stroke-width="2"/>
+<rect x="1185" y="345" width="455" height="52" rx="10" fill="#c27c0e"/>
+<rect x="1185" y="385" width="455" height="12" fill="#c27c0e"/>
+<text x="1203" y="379" font-size="22" font-weight="700" fill="#ffffff">5. The website</text>
+<text x="1203" y="427" font-size="15" font-weight="700" fill="#c27c0e">STORY: 4 STEPS</text>
+<circle cx="1209" cy="446.5" r="3.5" fill="#c27c0e"/>
+<text x="1219" y="452" font-size="16.5" fill="#22262a">The tank &gt; a fault &gt; an attack &gt; your turn</text>
+<text x="1203" y="477" font-size="15" font-weight="700" fill="#c27c0e">TRY IT: LEVEL 1, FIND THE LEAKING PIPE</text>
+<circle cx="1209" cy="496.5" r="3.5" fill="#c27c0e"/>
+<text x="1219" y="502" font-size="16.5" fill="#22262a">Classic: 4 pipes, flow meters, lost-water bars</text>
+<circle cx="1209" cy="521.5" r="3.5" fill="#c27c0e"/>
+<text x="1219" y="527" font-size="16.5" fill="#22262a">Rush: 8 pipes, 30 s, keys 1-8, tank drains</text>
+<circle cx="1209" cy="546.5" r="3.5" fill="#c27c0e"/>
+<text x="1219" y="552" font-size="16.5" fill="#22262a">Pipe fixer fixes the right pipe;</text>
+<text x="1219" y="577" font-size="16.5" fill="#22262a">a wrong pipe bursts: &#x27;Try again&#x27;</text>
+<text x="1203" y="602" font-size="15" font-weight="700" fill="#c27c0e">TRY IT: LEVEL 2, FAULT OR ATTACK?</text>
+<circle cx="1209" cy="621.5" r="3.5" fill="#c27c0e"/>
+<text x="1219" y="627" font-size="16.5" fill="#22262a">Easy / Normal / Hard, clue lights,</text>
+<text x="1219" y="652" font-size="16.5" fill="#22262a">guess the exact problem, answer pop-up</text>
+<text x="1203" y="677" font-size="15" font-weight="700" fill="#c27c0e">RESULTS AND REAL DATA TABS</text>
+<circle cx="1209" cy="696.5" r="3.5" fill="#c27c0e"/>
+<text x="1219" y="702" font-size="16.5" fill="#22262a">Photos incl. Brunei LNG flare stacks</text>
+<rect x="1185" y="900" width="455" height="228" rx="10" fill="#ffffff" stroke="#4a5560" stroke-width="2"/>
+<rect x="1185" y="900" width="455" height="52" rx="10" fill="#4a5560"/>
+<rect x="1185" y="940" width="455" height="12" fill="#4a5560"/>
+<text x="1203" y="934" font-size="22" font-weight="700" fill="#ffffff">6. The Python project</text>
+<circle cx="1209" cy="976.5" r="3.5" fill="#4a5560"/>
+<text x="1219" y="982" font-size="16.5" fill="#22262a">11 modules: config, scenarios, plant, detector,</text>
+<text x="1219" y="1007" font-size="16.5" fill="#22262a">learning, evaluation, plots, live demo,</text>
+<text x="1219" y="1032" font-size="16.5" fill="#22262a">HAI validation, web export, menu (cli)</text>
+<circle cx="1209" cy="1051.5" r="3.5" fill="#4a5560"/>
+<text x="1219" y="1057" font-size="16.5" fill="#22262a">9-option menu or command-line flags</text>
+<circle cx="1209" cy="1076.5" r="3.5" fill="#4a5560"/>
+<text x="1219" y="1082" font-size="16.5" fill="#22262a">20 tests, golden snapshots</text>
+<circle cx="1209" cy="1101.5" r="3.5" fill="#4a5560"/>
+<text x="1219" y="1107" font-size="16.5" fill="#22262a">&#x27;--web&#x27; records every run for the website</text>
+</svg>

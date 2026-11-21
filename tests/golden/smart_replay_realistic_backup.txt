@@ -1,0 +1,30 @@
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+
+Scenario: Replay + fresh noise   |   duration: permanent   |   backup sensor: on
+Truth:            ATTACK (Cyberattack (smart attacker))
+What happens:     Like the replay attack, but the attacker adds fresh random noise to every replayed reading so no two seconds ever match exactly.
+How it is caught: Exact-copy matching fails. The secret pump probes catch it: the real sensor dips when the pump pauses, the recording does not (physical watermarking).
+
+Level from second 40:     min 49%   max 100%   final 100%
+Mean valve command:        12% open  (healthy is about 50%)
+Valve really open:         91%  (differs from what the controller commanded)
+First alarm:               8 s after it started
+Worst status:              Overflow
+
+FAULT OR ATTACK?
+  Detector verdict:        UNKNOWN - Unexplained alarm  (8 s after it started)
+  Why:                     'Sensor mismatch, backup in use' with no known signature.
+  Recommended action:      Escalate: have an operator check the real level in the field before deciding.
+  Correct call:            NO
+  Evidence over time:
+    second  48: UNKNOWN Unexplained alarm
+    second  63: UNKNOWN Mass balance drifting
+    second  87: UNKNOWN Sensor A unconfirmed
+    second  94: UNKNOWN Mass balance drifting
+    second 101: UNKNOWN Sensor A unconfirmed
+    second 124: UNKNOWN Mass balance drifting
+    second 125: UNKNOWN Sensor A unconfirmed
+    second 127: UNKNOWN Mass balance drifting
+    second 131: UNKNOWN Sensor A unconfirmed
+    second 154: UNKNOWN Mass balance drifting
+

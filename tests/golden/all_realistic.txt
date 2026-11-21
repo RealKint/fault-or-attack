@@ -1,0 +1,33 @@
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+
+Every fault and attack, duration = permanent, starts at second 40
+Scenario              Truth   Backup    Max  Final  Verdict Culprit                    After     OK
+---------------------------------------------------------------------------------------------------
+Sensor drift          FAULT   off      100%   100%  FAULT   Leak or sensor drift       23 s      yes
+Sensor drift          FAULT   on        53%    50%  FAULT   Sensor drift               23 s      yes
+Sensor stuck          FAULT   off       85%    85%  FAULT   Sensor stuck               9 s       yes
+Sensor stuck          FAULT   on        58%    53%  FAULT   Sensor stuck               9 s       yes
+Pump failure          FAULT   off       46%     0%  FAULT   Pump failure               1 s       yes
+Pump failure          FAULT   on        46%     0%  FAULT   Pump failure               1 s       yes
+Valve stuck open      FAULT   off       46%     0%  FAULT   Valve stuck open           0 s       yes
+Valve stuck open      FAULT   on        46%     0%  FAULT   Valve stuck open           0 s       yes
+Leak                  FAULT   off       47%    47%  FAULT   Leak or sensor drift       26 s      yes
+Leak                  FAULT   on        51%    47%  FAULT   Leak                       8 s       yes
+Power loss            FAULT   off       46%     0%  FAULT   Power loss                 0 s       yes
+Power loss            FAULT   on        46%     0%  FAULT   Power loss                 0 s       yes
+---------------------------------------------------------------------------------------------------
+False data injection  ATTACK  off      100%   100%  ATTACK  False data injection       14 s      yes
+False data injection  ATTACK  on        54%    50%  ATTACK  False data injection       14 s      yes
+Replay attack         ATTACK  off      100%   100%  ATTACK  Replay attack              9 s       yes
+Replay attack         ATTACK  on       100%   100%  ATTACK  Replay attack              9 s       yes
+Replay + fresh noise  ATTACK  off      100%   100%  ATTACK  Replay attack              105 s     yes
+Replay + fresh noise  ATTACK  on       100%   100%  UNKNOWN Unexplained alarm          8 s       NO
+Stealthy spoof        ATTACK  off      100%   100%  ATTACK  Disguised attack           23 s      yes
+Stealthy spoof        ATTACK  on        53%    50%  ATTACK  Disguised attack           23 s      yes
+Command injection     ATTACK  off      100%   100%  ATTACK  Command injection          0 s       yes
+Command injection     ATTACK  on       100%   100%  ATTACK  Command injection          0 s       yes
+Denial of service     ATTACK  off       53%    50%  ATTACK  Denial of service          1 s       yes
+Denial of service     ATTACK  on        52%    50%  ATTACK  Denial of service          1 s       yes
+---------------------------------------------------------------------------------------------------
+Fault-vs-attack calls correct: 23/24.   Healthy run: no false alarm
+

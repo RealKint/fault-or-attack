@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Real HAI dataset: about 150 MB, download it yourself (see README)
+data/hai/
+
+# Editor and tool folders
+.idea/
+.claude/
+.taste-skill/
+
+# Old copy of the website
+web/index_v1_backup.html

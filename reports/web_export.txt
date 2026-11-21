@@ -1,0 +1,135 @@
+  recorded 6/156 runs  recorded 12/156 runs  recorded 18/156 runs  recorded 24/156 runs  recorded 30/156 runs  recorded 36/156 runs  recorded 42/156 runs  recorded 48/156 runs  recorded 54/156 runs  recorded 60/156 runs  recorded 66/156 runs  recorded 72/156 runs  recorded 78/156 runs  recorded 84/156 runs  recorded 90/156 runs  recorded 96/156 runs  recorded 102/156 runs  recorded 108/156 runs  recorded 114/156 runs  recorded 120/156 runs  recorded 126/156 runs  recorded 132/156 runs  recorded 138/156 runs  recorded 144/156 runs  recorded 150/156 runs  recorded 156/156 runs  recorded 156 runs.            
+Scoring both plants over 20 seeds for the results section (a few minutes)...
+
+Detector accuracy on the simple plant (on/off pump)
+over 20 seeds x 3 duration modes x backup on/off
+Scenario                Truth      Correct   Mean time to verdict   Most common culprit
+---------------------------------------------------------------------------------------
+Sensor drift            FAULT     120/120                   5.5 s   Leak or sensor drift
+Sensor stuck            FAULT     120/120                   4.0 s   Sensor stuck
+Pump failure            FAULT     120/120                   2.0 s   Pump failure
+Valve stuck open        FAULT     120/120                   0.0 s   Valve stuck open
+Leak                    FAULT     120/120                  12.8 s   Leak or sensor drift
+Power loss              FAULT     120/120                   0.0 s   Power loss
+False data injection    ATTACK    120/120                   7.5 s   False data injection
+Replay attack           ATTACK    120/120                  10.1 s   False data injection
+Replay + fresh noise *  ATTACK    113/120                  11.0 s   False data injection
+Stealthy spoof *        ATTACK    120/120                   5.5 s   Disguised attack
+Command injection       ATTACK    120/120                   0.0 s   Command injection
+Denial of service       ATTACK    120/120                   1.5 s   Denial of service
+---------------------------------------------------------------------------------------
+Overall: 1433/1440 correct (99.5%).   * = smart attacker added after the detector was first tuned
+Baselines: always say FAULT 50%,  always say ATTACK 50%,  coin flip 50%
+
+                called FAULT  called ATTACK   UNKNOWN   nothing
+truly FAULT              720              0         0         0
+truly ATTACK               5            713         2         0
+
+False alarms: 0/40 short healthy runs,  0 in 10 hours of healthy plant time
+
+
+Detector accuracy on the realistic plant (PID valve, valve lag, rounded readings, correlated noise)
+over 20 seeds x 3 duration modes x backup on/off
+Scenario                Truth      Correct   Mean time to verdict   Most common culprit
+---------------------------------------------------------------------------------------
+Sensor drift            FAULT     104/120                  23.8 s   Leak or sensor drift
+Sensor stuck            FAULT     116/120                  14.8 s   Sensor stuck
+Pump failure            FAULT     120/120                   1.0 s   Pump failure
+Valve stuck open        FAULT     120/120                   0.0 s   Valve stuck open
+Leak                    FAULT      93/120                  17.0 s   Leak
+Power loss              FAULT     120/120                   0.0 s   Power loss
+False data injection    ATTACK    120/120                   8.1 s   False data injection
+Replay attack           ATTACK    101/120                  20.6 s   Replay attack
+Replay + fresh noise *  ATTACK     64/120                  29.0 s   False data injection
+Stealthy spoof *        ATTACK    105/120                  23.6 s   Disguised attack
+Command injection       ATTACK    120/120                   0.0 s   Command injection
+Denial of service       ATTACK    120/120                   1.5 s   Denial of service
+---------------------------------------------------------------------------------------
+Overall: 1303/1440 correct (90.5%).   * = smart attacker added after the detector was first tuned
+Baselines: always say FAULT 50%,  always say ATTACK 50%,  coin flip 50%
+
+                called FAULT  called ATTACK   UNKNOWN   nothing
+truly FAULT              673             11        36         0
+truly ATTACK              29            630        53         8
+
+False alarms: 0/40 short healthy runs,  0 in 10 hours of healthy plant time
+
+Loading data/hai/train1.csv (normal only) and data/hai/test1.csv (normal + attacks)...
+
+Calibrating on normal data only:
+  mass balance             CUSUM alarm threshold   1077.3
+  level controller         CUSUM alarm threshold    110.9
+  outflow controller       CUSUM alarm threshold     28.2
+  level valve tracking     CUSUM alarm threshold     75.9
+  outflow valve tracking   CUSUM alarm threshold     18.7
+  exact replay             SWITCHED OFF: fires on 28 s of normal training data
+
+Per attack event (detected = any alarm from its start to 60 s after it ends):
+  ID    Target                                                    Scope   Detected  Delay   Checks that fired
+  A101  P1_PCV01D pressure-valve command                          other   no        -       -
+  A102  P1_LCV01D level-valve command (stealthy)                  tank    yes       4 s     level controller, level valve tracking
+  A103  P1_FCV03D outflow-valve command + P1_FT03 sensor spoof    tank    yes       7 s     outflow controller, outflow valve tracking
+  A104  P3_LCV01D (another process)                               other   no        -       -
+  A105  P1_B3004 level setpoint                                   tank    yes       58 s    mass balance, level controller, outflow controller, level valve tracking
+  A106  P1_PP04 heater pump                                       other   no        -       -
+  A107  P1_FCV01D temperature valve                               other   no        -       -
+
+False alarms (alarm events starting during normal operation):
+  mass balance               0
+  level controller           2
+  outflow controller         2
+  level valve tracking       2
+  outflow valve tracking     1
+  never-seen setpoint        1
+  all checks combined        3  over 22.6 h = 0.13 per hour
+
+Summary
+  Tank attacks detected:   3/3
+  All attacks detected:    3/7
+  False alarm events:      3 in 22.6 h of normal operation
+  Note: HAI has no labelled equipment faults, so FAULT-vs-ATTACK accuracy cannot be scored here.
+Loading data/hai/train1.csv (normal only) and data/hai/test2.csv (normal + attacks)...
+
+Calibrating on normal data only:
+  mass balance             CUSUM alarm threshold   1077.3
+  level controller         CUSUM alarm threshold    110.9
+  outflow controller       CUSUM alarm threshold     28.2
+  level valve tracking     CUSUM alarm threshold     75.9
+  outflow valve tracking   CUSUM alarm threshold     18.7
+  exact replay             SWITCHED OFF: fires on 28 s of normal training data
+
+Per attack event (detected = any alarm from its start to 60 s after it ends):
+  ID    Target                                                    Scope   Detected  Delay   Checks that fired
+  A201  P1_B2016 pressure setpoint                                other   no        -       -
+  A202  P1_FCV03D outflow-valve command (stealthy)                tank    no        -       -
+  A203  P2_AutoSD turbine setpoint                                other   no        -       -
+  A204  P1_PCV01D pressure valve + P2_SCO                         other   no        -       -
+  A205  P3_LCV01D (another process)                               other   no        -       -
+  A206  P1_B2016, P1_PIT01 pressure + P2 turbine                  other   no        -       -
+  A207  P1_LCV01D level-valve command                             tank    yes       14 s    mass balance, level controller, level valve tracking
+  A208  P2_SCO, P2_SIT01 turbine                                  other   no        -       -
+  A209  P1_B2016, P1_PIT01, P1_FIT01 pressure loop                other   no        -       -
+  A210  P2_AutoSD turbine setpoint                                other   no        -       -
+  A211  P1_PCV01D, P1_PIT01 pressure loop                         other   no        -       -
+  A212  P3_LCP01D (another process)                               other   no        -       -
+  A213  P1_PP04 heater pump (stealthy)                            other   no        -       -
+  A214  P3_LCV01D (another process)                               other   no        -       -
+  A215  P1_B3005 outflow setpoint + P1_FT03 sensor spoof          tank    yes       24 s    outflow controller, outflow valve tracking
+  A216  P1_B2016 pressure setpoint + P1_B3005 outflow setpoint    tank    yes       22 s    outflow controller
+  A217  P1_FCV03D outflow-valve command                           tank    yes       39 s    outflow controller, outflow valve tracking
+
+False alarms (alarm events starting during normal operation):
+  mass balance               0
+  level controller           0
+  outflow controller         0
+  level valve tracking       0
+  outflow valve tracking     1
+  never-seen setpoint        0
+  all checks combined        1  over 19.4 h = 0.05 per hour
+
+Summary
+  Tank attacks detected:   4/5
+  All attacks detected:    4/17
+  False alarm events:      1 in 19.4 h of normal operation
+  Note: HAI has no labelled equipment faults, so FAULT-vs-ATTACK accuracy cannot be scored here.
+Wrote web\data.js (1.8 MB). Open web\index.html in a browser.
