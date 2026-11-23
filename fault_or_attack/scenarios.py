@@ -188,6 +188,11 @@ PHYSICAL_SCENARIOS: dict[str, ScenarioInfo] = {
 }
 
 
+# Physical events that can start part-way through another scenario (mixed cases). "b_fail" = backup sensor B
+# dies on its own, an ordinary instrument failure; "theft_fence" = a theft tap by someone who climbed the fence,
+# so no gate or badge record exists.
+SECOND_EVENTS = ("theft", "theft_fence", "corrosion", "drone", "water", "b_fail")
+
 KNOWN_SCENARIOS: dict[str, ScenarioInfo] = {**SCENARIOS, **STRESS_ATTACKS, **PHYSICAL_SCENARIOS}
 
 

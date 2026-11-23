@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, replace
 from statistics import mean
 
 from .config import Config
-from .detector import Verdict, diagnose
+from .detector import Verdict, diagnose, findings
 from .plant import Record, TankSimulator
 from .scenarios import ATTACKS, MODES, PHYSICAL_SCENARIOS, SCENARIOS, SMART_ATTACKS, STRESS_ATTACKS
 
@@ -292,3 +293,140 @@ def print_physical(cfg: Config, seeds: int) -> dict:
     print()
     out.update(right=right_all, total=total_all)
     return out
+
+
+# --- deeper physical-side tests ---------------------------------------------------------------------------------
+
+# How big each slow event is, in % of the tank per second, from far below the old per-second limit up to large.
+SWEEP = {
+    "corrosion": ("Corrosion leak (constant)", "FAULT", "corrosion_start", (0.002, 0.005, 0.01, 0.02, 0.05, 0.1)),
+    "theft": ("Fuel theft", "PHYSICAL", "theft_flow", (0.005, 0.01, 0.02, 0.05, 0.1, 0.2)),
+    "water": ("Water getting into the tank", "FAULT", "water_rate", (0.005, 0.01, 0.02, 0.05, 0.1)),
+}
+
+
+def print_sweep(cfg: Config, seeds: int) -> dict:
+    """Detection curve: each slow event at a range of sizes, starting at a different time in each run.
+
+    One-hour runs; the event starts at 300, 600, 900 or 1200 s (picked per seed), so a size is only 'caught' if
+    the detector finds it however long the plant has been running. Corrosion is held constant here (no growth), so
+    the size is the true leak rate throughout."""
+    plant = "realistic plant (PID valve)" if cfg.control == "pid" else "simple plant (on/off pump)"
+    print()
+    print(f"Detection curve on the {plant}: {seeds} seeds x backup on/off, one-hour runs, random start time")
+    header = f"{'Scenario':<30}{'Size (%/s)':>11}{'Right':>9}{'Wrong call':>12}{'Missed':>8}{'Mean time':>11}"
+    print(header)
+    print("-" * len(header))
+    out: dict = {"seeds": seeds, "plant": cfg.control, "rows": []}
+    for key, (name, truth, knob, sizes) in SWEEP.items():
+        for size in sizes:
+            right = wrong = missed = 0
+            delays: list[int] = []
+            for seed in range(1, seeds + 1):
+                at = random.Random(seed * 7 + 3).choice((300, 600, 900, 1200))
+                c = replace(cfg, ticks=3600, inject_at=at, **{knob: size}, **({"corrosion_growth": 0.0} if key == "corrosion" else {}))
+                for backup in (False, True):
+                    v, _ = diagnose(TankSimulator(c, key, "permanent", backup, seed).run(), c)
+                    if v is None or v.tick < at:
+                        missed += v is None
+                        wrong += v is not None
+                    elif v.label == truth:
+                        right += 1
+                        delays.append(v.tick - at)
+                    else:
+                        wrong += 1
+            total = 2 * seeds
+            avg = f"{mean(delays):.0f} s" if delays else "-"
+            print(f"{name:<30}{size:>11.3f}{right:>5}/{total:<3}{wrong:>12}{missed:>8}{avg:>11}")
+            out["rows"].append({"key": key, "size": size, "right": right, "wrong": wrong, "missed": missed,
+                                "total": total, "delay": mean(delays) if delays else None})
+    print("-" * len(header))
+    print("Normal flow is 2%/s; a size of 0.01 is half a percent of that. Wrong call = a verdict before the event")
+    print("began, or the wrong kind (e.g. theft called a leak). Missed = nothing said in the whole hour.")
+    print()
+    return out
+
+
+# (name, main scenario, second event, seconds between them, acceptable first answers, causes that should both appear)
+MIXED = (
+    ("Cyber attack, then fuel theft", "spoof", "theft", 60, {"ATTACK", "PHYSICAL"},
+     (("ATTACK", ""), ("PHYSICAL", ""))),
+    ("Network flood, then corrosion leak", "dos", "corrosion", 60, {"ATTACK", "FAULT"},
+     (("ATTACK", ""), ("FAULT", "leak"))),
+    ("Corrosion leak after sensor B died", "corrosion", "b_fail", -120, {"FAULT"},
+     (("FAULT", "leak"),)),
+    ("Drone strike during planned work", "bypass_planned", "drone", 120, {"PHYSICAL"},
+     (("PHYSICAL", "damage"),)),
+    ("Corrosion leak and water ingress", "corrosion", "water", 0, {"FAULT"},
+     (("FAULT", "leak"), ("FAULT", "water"))),
+    ("Theft under cover of a work order", "bypass_planned", "theft", 120, {"PHYSICAL"},
+     (("PHYSICAL", "theft"),)),
+    ("Theft by someone over the fence", None, "theft_fence", 0, {"PHYSICAL"},
+     (("PHYSICAL", "theft"),)),
+)
+
+
+def print_mixed(cfg: Config, seeds: int) -> dict:
+    """Two things at once: a cyberattack with a theft, a leak with a dead backup sensor, a drone during planned work.
+
+    'First answer right' = the first verdict names one of the true causes (and comes after the first one began).
+    'Both found' = every true cause shows up during the run, as a main verdict or as a second finding beside one."""
+    c = replace(cfg, ticks=1800, inject_at=400)
+    plant = "realistic plant (PID valve)" if c.control == "pid" else "simple plant (on/off pump)"
+    print()
+    print(f"Mixed cases on the {plant}: {seeds} seeds x backup on/off, 30-minute runs")
+    header = f"{'Case':<38}{'First answer right':>20}{'Both found':>12}   Most common first answer"
+    print(header)
+    print("-" * len(header))
+    out: dict = {"seeds": seeds, "plant": c.control, "rows": []}
+    for name, main, second, gap, ok_first, causes in MIXED:
+        first_ok = both = 0
+        calls: dict[str, int] = {}
+        for seed in range(1, seeds + 1):
+            for backup in (False, True):
+                recs = TankSimulator(c, main, "permanent", backup, seed, second=second, second_delay=gap).run()
+                v, _ = diagnose(recs, c)
+                timeline = findings(recs, c)
+                start = min(c.inject_at, c.inject_at + gap)
+                call = f"{v.label}: {v.culprit}" if v else "nothing"
+                calls[call] = calls.get(call, 0) + 1
+                first_ok += v is not None and v.tick >= start and v.label in ok_first
+                seen = [(x.label, x.culprit.lower()) for x in timeline if x.tick >= start]
+                both += all(any(lab == want and key in cul for lab, cul in seen) for want, key in causes)
+        total = 2 * seeds
+        top = max(calls, key=calls.get)
+        print(f"{name:<38}{first_ok:>14}/{total:<5}{both:>7}/{total:<4}   {top}")
+        out["rows"].append({"name": name, "first_ok": first_ok, "both": both, "total": total, "top": top})
+    print("-" * len(header))
+    print()
+    return out
+
+
+def print_healthy(cfg: Config, hours: int) -> dict:
+    """False alarms over long healthy runs with ordinary disturbances switched on: rain showers filling the bund,
+    gas-detector bump tests, planned visits (door opened under a work order), and the product warming and cooling
+    over the day. Every verdict here is a false alarm. Runs are 24 hours long (shorter for the last one)."""
+    plant = "realistic plant (PID valve)" if cfg.control == "pid" else "simple plant (on/off pump)"
+    print()
+    print(f"False alarms on the {plant}: {hours} healthy hours with rain, gas-detector tests, planned visits and the daily "
+          "temperature swing")
+    alarms: list[tuple[int, int, str]] = []
+    left, seed = hours, 0
+    while left > 0:
+        seed += 1
+        span = min(24, left)
+        left -= span
+        c = replace(cfg, ticks=span * 3600, inject_at=span * 3600 - 1)
+        recs = TankSimulator(c, None, "permanent", seed % 2 == 0, 500 + seed, disturbances=True).run()
+        _, timeline = diagnose(recs, c)
+        alarms += [(500 + seed, x.tick, f"{x.label}: {x.culprit}") for x in timeline]
+    by_rule: dict[str, int] = {}
+    for _, _, call in alarms:
+        by_rule[call] = by_rule.get(call, 0) + 1
+    print(f"Verdicts raised: {len(alarms)} in {hours} hours ({100 * len(alarms) / hours:.1f} per 100 hours)")
+    for call, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
+        print(f"  {n:>3}  {call}")
+    for seed, tick, call in alarms[:20]:
+        print(f"  seed {seed}, hour {tick / 3600:.1f}: {call}")
+    print()
+    return {"hours": hours, "plant": cfg.control, "alarms": len(alarms), "by_rule": by_rule}

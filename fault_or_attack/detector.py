@@ -22,6 +22,7 @@ class Verdict:
     reason: str       # the evidence, in words an operator understands
     mitre: str = ""   # MITRE ATT&CK for ICS techniques (attacks only)
     action: str = ""  # what the control room should do next
+    also: "Verdict | None" = None   # a second, separate physical finding at the same moment (e.g. a leak during an attack)
 
     def __post_init__(self) -> None:
         if not self.mitre and self.label == "ATTACK":
@@ -102,10 +103,12 @@ class FaultOrAttackDetector:
                      self._replay, self._probe_echo, self._ignores_valve, self._physics_violation,
                      self._hardwired_witness, self._pump_no_run,
                      self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance,
-                     self._slow_balance, self._wall_thinning):
+                     self._slow_balance, self._wall_thinning, self._water_layer, self._bund_leak):
             verdict = rule()
             if verdict:
-                return self._fuse(verdict)
+                verdict = self._fuse(verdict)
+                verdict.also = self._second_finding(verdict)
+                return verdict
         cusum = max(self.cusum_up, self.cusum_down)
         if cusum > cfg.cusum_h:
             return Verdict(rec.tick, "UNKNOWN", "Mass balance drifting",
@@ -290,6 +293,28 @@ class FaultOrAttackDetector:
         """
         return median(abs(b - a) for a, b in zip(values, values[1:]))
 
+    def _impossible_jumps(self, res: list[float]) -> int:
+        """How many jumps in the mass-balance error are bigger than sensor noise can ever make.
+
+        Each error is the difference of two noisy readings, so a jump between neighbouring errors
+        involves three readings and can be at most 4 x the noise (plus rounding). Healthy noise can
+        sometimes look rough by chance; it can never jump further than that limit. Forged values do.
+        """
+        cfg = self.cfg
+        limit = 4 * cfg.sensor_noise + 2 * cfg.quantize + 0.05
+        return sum(abs(b - a) > limit for a, b in zip(res, res[1:]))
+
+    def _second_finding(self, main: Verdict) -> Verdict | None:
+        """Physical problems can happen during something else: a leak during a network flood, water getting in while
+        the tank also leaks. These rules read hard-wired site signals, so they are checked even after a first verdict,
+        and the first one that says something different is reported alongside it."""
+        for rule in (self._site_switches, self._physical_damage, self._slow_balance, self._wall_thinning,
+                     self._water_layer, self._bund_leak):
+            v = rule()
+            if v and v.label != "UNKNOWN" and (v.label, v.culprit) != (main.label, main.culprit):
+                return v
+        return None
+
     # --- rules -------------------------------------------------------------
     def _site_switches(self):
         """Hard-wired switches people operate on site: a tamper switch or the safety bypass, with no work order."""
@@ -341,6 +366,37 @@ class FaultOrAttackDetector:
                            f"The corrosion probe shows {lost:.1f}% of the corrosion allowance gone in {w} s, far faster "
                            f"than normal ({r.wall:.0f}% left). Nothing has leaked yet: inspect the line (ultrasonic "
                            "thickness) and plan the repair before it does.")
+
+    def _water_layer(self):
+        """The hard-wired water-interface probe on its own: the water layer under the product keeps rising.
+        Catches water ingress even when a leak at the same time hides the level gain."""
+        cfg = self.cfg
+        w = cfg.slow_window
+        if len(self.h) <= w:
+            return None
+        r, old = self.h[-1], self.h[-w - 1]
+        if r.interface is None or old.interface is None:
+            return None
+        rise = r.interface - old.interface
+        if rise > 0.5 * w * cfg.slow_limit:
+            return self._v("FAULT", "Water getting into the tank",
+                           f"The water-interface probe shows the water layer up {rise:.1f}% in {w} s. Check the roof "
+                           "seal and drain the water before it corrodes the tank floor.")
+
+    def _bund_leak(self):
+        """The bund level and the gas detector together, without trusting sensor A: product is collecting in the bund.
+        Rain fills the bund too, but rain does not set off the gas detector. Gas-detector tests run under a work order."""
+        cfg = self.cfg
+        w = cfg.slow_window
+        if len(self.h) <= w:
+            return None
+        r, old = self.h[-1], self.h[-w - 1]
+        if r.work_order or not r.gas_alarm:
+            return None
+        if r.bund - old.bund > 0.25 * w * cfg.slow_limit:
+            return self._v("FAULT", "Slow leak into the bund",
+                           f"The bund rose {r.bund - old.bund:.1f}% in {w} s and the gas detector smells product. A real "
+                           "leak, typically corrosion: isolate the section and send a technician.")
 
     def _slow_balance(self):
         """Slow leaks and gains, such as corrosion or water ingress, far too small for the per-second checks.
@@ -481,7 +537,7 @@ class FaultOrAttackDetector:
         if len(res) < cfg.window:
             return None
         rough = self._roughness(res)
-        if rough > cfg.roughness_limit:
+        if rough > cfg.roughness_limit and self._impossible_jumps(res) >= cfg.impossible_jumps:
             return self._v("ATTACK", "False data injection",
                            f"Sensor A's mass-balance error typically jumps by {rough:.1f}%/s "
                            "(healthy is about 0.3). Physical faults are smooth; forged data is not.")
@@ -670,6 +726,24 @@ class FaultOrAttackDetector:
             return self._v("FAULT", "Sensor stuck",
                            f"Sensor A froze {len(self.freeze_ends)} times in the last minute. Healthy sensors never "
                            "freeze this often: a loose connection or failing transmitter.")
+
+
+def findings(records: list[Record], cfg: Config) -> list[Verdict]:
+    """Every distinct thing the detector said during a run, main verdicts and second findings alike, in order."""
+    live = getattr(records, "verdicts", None)
+    if live is not None and getattr(records, "cfg", None) == cfg and len(live) == len(records):
+        per_tick = live
+    else:
+        det = FaultOrAttackDetector(cfg)
+        per_tick = [det.observe(rec) for rec in records]
+    out: list[Verdict] = []
+    seen: set[tuple[str, str]] = set()
+    for v in per_tick:
+        for x in (v, v.also if v else None):
+            if x is not None and (x.label, x.culprit) not in seen:
+                seen.add((x.label, x.culprit))
+                out.append(x)
+    return out
 
 
 def diagnose(records: list[Record], cfg: Config) -> tuple[Verdict | None, list[Verdict]]:

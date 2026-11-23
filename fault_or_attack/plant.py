@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import math
 import random
 from collections import deque
 from dataclasses import dataclass
 
 from .config import Config
-from .scenarios import KNOWN_SCENARIOS, MODES, NEW_DEVICE_ATTACKS, REPLAYS
+from .scenarios import KNOWN_SCENARIOS, MODES, NEW_DEVICE_ATTACKS, REPLAYS, SECOND_EVENTS
 
 
 class RunRecords(list):
@@ -119,7 +120,8 @@ def classify(level: float, power_ok: bool, mismatch: bool, cfg: Config,
 
 class TankSimulator:
     def __init__(self, cfg: Config | None = None, fault: str | None = None,
-                 mode: str = "permanent", backup_sensor: bool = False, seed: int = 1):
+                 mode: str = "permanent", backup_sensor: bool = False, seed: int = 1,
+                 second: str | None = None, second_delay: int = 60, disturbances: bool = False):
         if fault is not None and fault not in KNOWN_SCENARIOS:
             raise ValueError(f"Unknown fault or attack {fault!r}. Choose from {list(KNOWN_SCENARIOS)}")
         if mode not in MODES:
@@ -129,6 +131,20 @@ class TankSimulator:
             raise ValueError(f"The replay attack needs at least {self.cfg.replay_match} healthy seconds to record "
                              f"before it starts (inject_at is {self.cfg.inject_at}).")
         self.fault = fault                      # a fault key or an attack key
+        # Mixed cases: a second, physical event that starts second_delay seconds after the first one.
+        if second is not None and second not in SECOND_EVENTS:
+            raise ValueError(f"Unknown second event {second!r}. Choose from {list(SECOND_EVENTS)}")
+        self.second = second
+        self.second_at = self.cfg.inject_at + second_delay
+        # Healthy-day disturbances: rain into the bund, gas-detector tests, planned visits, the daily temperature swing.
+        self.disturbances = disturbances
+        self.day_rng = random.Random(seed + 9001)
+        self.rain_left = 0                      # seconds of rain left in the current shower
+        self.bump_left = 0                      # seconds left in a gas-detector bump test
+        self.visit_left = 0                     # seconds left in a planned visit (door opened under a work order)
+        self.visit_door = False
+        self.thermal = 0.0                      # level change from the product warming and cooling over the day
+        self.b_dead = False                     # mixed case: backup sensor B failed on its own
         self.mode = mode
         self.backup_sensor = backup_sensor
         self.rng = random.Random(seed)          # same seed -> same run every time
@@ -156,7 +172,8 @@ class TankSimulator:
         self.recording: deque[tuple[float, bool]] = deque(maxlen=self.cfg.replay_length)
         self.replay_i: int | None = None        # replay: position in the recording
         self.twin: float | None = None          # consistent forgery: the attacker's fake "healthy" tank level
-        self.bund = 0.0                         # spill collected in the bund around the tank
+        self.bund = 0.0                         # liquid collected in the bund around the tank (product and rain)
+        self.bund_product = 0.0                 # the product part of it, which is what the gas detector smells
         self.water = 2.0                        # water layer at the bottom of the tank, % of tank height
         self.twin_noise = 0.0                   # consistent forgery: the attacker's own imitation of sensor noise
 
@@ -255,7 +272,12 @@ class TankSimulator:
         cfg = self.cfg
         active = self.fault_active()
         f = self.fault if active else None      # the scenario that is acting on this tick
+        x = self.second if (self.second is not None and self.tick >= self.second_at) else None
+        phys = {f, x}                           # physical events acting now (the main one and any second one)
         power_ok = f != "power"
+        if x == "b_fail":
+            self.b_dead = True
+        self._daily_disturbances()
 
         # --- sensor A (the one the controller normally trusts) ---
         if f == "drift":
@@ -286,7 +308,7 @@ class TankSimulator:
         if f == "tamper_b" and self.twin is not None:
             # The insider rewired sensor B to follow the attacker's fake tank too.
             reading_b_raw = self._quantize(self._clamp(self.twin + self._noise("b")))
-        reading_b = reading_b_raw if (self.backup_sensor and power_ok and f != "drone") else None
+        reading_b = reading_b_raw if (self.backup_sensor and power_ok and "drone" not in phys and not self.b_dead) else None
 
         # --- which reading does the controller trust? ---
         trusted, mismatch, a_lost = choose_reading(received, reading_b, self.last_rx, cfg)
@@ -367,21 +389,32 @@ class TankSimulator:
         outflow = metered_outflow + (cfg.leak_flow if f == "leak" else 0.0)
         # Physical side: losses the outflow meter never sees, and where they go.
         in_bund = 0.0
-        if f == "corrosion":
-            in_bund = min(cfg.corrosion_max, cfg.corrosion_start + cfg.corrosion_growth * (self.tick - cfg.inject_at))
-        elif f == "drone":
-            in_bund = cfg.drone_leak
-        elif f == "maint_leak":
-            in_bund = cfg.leak_flow
-        lost = in_bund + (cfg.theft_flow if f == "theft" else 0.0)     # a theft tap sits outside the bund
+        if "corrosion" in phys:
+            start = cfg.inject_at if f == "corrosion" else self.second_at
+            in_bund += min(cfg.corrosion_max, cfg.corrosion_start + cfg.corrosion_growth * (self.tick - start))
+        if "drone" in phys:
+            in_bund += cfg.drone_leak
+        if f == "maint_leak":
+            in_bund += cfg.leak_flow
+        thieving = "theft" in phys or "theft_fence" in phys
+        lost = in_bund + (cfg.theft_flow if thieving else 0.0)        # a theft tap sits outside the bund
         lost = min(lost, self.level)                                   # an empty tank cannot lose more
         outflow += lost
-        self.bund += min(in_bund, lost)                                # only a leak inside the bund collects there
+        into_bund = min(in_bund, lost)                                 # only a leak inside the bund collects there
+        self.bund += into_bund
+        self.bund_product += into_bund
+        if self.rain_left:
+            self.bund += cfg.rain_rate                                 # rain collects in the bund too (no gas)
         if f == "thinning":
             self.wall = max(0.0, self.wall - cfg.thin_rate)
-        if f == "water":
+        if "water" in phys:
             self.level = min(100.0, self.level + cfg.water_rate)        # rainwater adds to the total level ...
             self.water += cfg.water_rate                                # ... and settles under the product
+        if self.disturbances:
+            # Thermal expansion: the product swells by day and shrinks by night (a real, unmetered level change).
+            new = cfg.thermal_swing * math.sin(2 * math.pi * self.tick / 86_400)
+            self.level = max(0.0, min(100.0, self.level + new - self.thermal))
+            self.thermal = new
         if f in ("forge", "tamper_b") and self.twin is not None:
             # The twin follows exactly the physics the detector expects from the forged feedback and
             # valve position, one second later, so the mass balance always closes.
@@ -412,7 +445,7 @@ class TankSimulator:
             duty=duty, run_duty=run_duty, fault_active=active, tone=tone, status=status,
             screen_alarm=screen_alarm(trusted, power_ok, mismatch, a_lost, self.backup_sensor, cfg),
             tamper=site["tamper"], door=site["door"], work_order=site["work_order"], bypass=site["bypass"],
-            gas_alarm=power_ok and (self.bund >= cfg.gas_threshold or f == "drone"),
+            gas_alarm=power_ok and (self.bund_product >= cfg.gas_threshold or "drone" in phys or self.bump_left > 0),
             bund=round(self.bund, 3),
             interface=self._quantize(max(0.0, self.water + 0.05 * (self.site_rng.random() - 0.5))) if power_ok else None,
             wall=round(self.wall + 0.1 * (self.er_rng.random() - 0.5), 2) if power_ok else None,
@@ -420,10 +453,38 @@ class TankSimulator:
         self.tick += 1
         return rec
 
+    def _daily_disturbances(self) -> None:
+        """Ordinary things on a healthy day that a detector must not mistake for trouble. Off unless asked for."""
+        if not self.disturbances:
+            return
+        cfg, rng = self.cfg, self.day_rng
+        self.rain_left = max(0, self.rain_left - 1)
+        self.bump_left = max(0, self.bump_left - 1)
+        self.visit_left = max(0, self.visit_left - 1)
+        self.visit_door = False
+        if not self.rain_left and rng.random() < 1 / 7200:           # a shower about every two hours
+            self.rain_left = rng.randint(600, 2400)
+        if not self.bump_left and rng.random() < 1 / 14_400:         # a gas-detector test about every four hours
+            self.bump_left = 60
+        if not self.visit_left and rng.random() < 1 / 3600:          # a planned visit about every hour
+            self.visit_left = rng.randint(300, 1800)
+            self.visit_door = True                                   # the crew badges in as the visit starts
+
     def _site_events(self) -> dict[str, bool]:
         """Hard-wired site signals for the physical scenarios: when people arrive, whether the visit is planned,
         and what they switch. Healthy runs and the headline scenarios have none of them."""
-        f, t, at = self.fault, self.tick, self.cfg.inject_at
+        ev = self._events_for(self.fault, self.cfg.inject_at)
+        if self.second is not None:
+            for k, v in self._events_for(self.second, self.second_at).items():
+                ev[k] = ev[k] or v
+        if self.disturbances:
+            # Routine visits and gas-detector tests are planned: the door opens and a work order is open.
+            ev["door"] = ev["door"] or self.visit_door
+            ev["work_order"] = ev["work_order"] or self.visit_left > 0 or self.bump_left > 0
+        return ev
+
+    def _events_for(self, f: str | None, at: int) -> dict[str, bool]:
+        t = self.tick
         planned = f in ("maint_leak", "bypass_planned")
         return {
             # Unplanned visitors arrive shortly before they act; the maintenance crew opens a work order first.

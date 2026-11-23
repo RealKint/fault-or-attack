@@ -8,7 +8,8 @@ import random
 from pathlib import Path
 
 from .config import PROJECT_DIR, Config, realistic
-from .evaluation import print_eval, print_physical, print_single, print_stress, print_table
+from .evaluation import (print_eval, print_healthy, print_mixed, print_physical, print_single, print_stress,
+                         print_sweep, print_table)
 from .hai_validation import HaiDataError, hai_main
 from .learning import learn_from_normal
 from .live_demo import animate_live
@@ -41,6 +42,15 @@ def main(argv: list[str] | None = None) -> None:
                    help="score the physical side: corrosion, water ingress, theft, valve forced by hand, safety bypass, "
                         "insider tampering, drone strike, planned work (--eval SEEDS sets the seeds, default 10; "
                         "--realistic for the PID plant)")
+    p.add_argument("--sweep", action="store_true",
+                   help="physical side: detection curve for corrosion leaks, theft and water ingress at a range of "
+                        "sizes and start times (--eval SEEDS, default 10)")
+    p.add_argument("--mixed", action="store_true",
+                   help="physical side: two events at once, such as an attack with a theft or a drone during planned "
+                        "work (--eval SEEDS, default 10)")
+    p.add_argument("--healthy", type=int, metavar="HOURS",
+                   help="count false alarms over this many healthy hours with rain, gas-detector tests, planned visits "
+                        "and the daily temperature swing")
     p.add_argument("--dashboard", action="store_true",
                    help="score both plants and draw a one-page accuracy dashboard "
                         "(saved to accuracy_dashboard.png; --save to choose, --plot to open a window)")
@@ -147,6 +157,18 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.physical:
         print_physical(cfg, args.eval or 10)
+        return
+
+    if args.sweep:
+        print_sweep(cfg, args.eval or 10)
+        return
+
+    if args.mixed:
+        print_mixed(cfg, args.eval or 10)
+        return
+
+    if args.healthy is not None:
+        print_healthy(cfg, args.healthy)
         return
 
     if args.eval is not None:

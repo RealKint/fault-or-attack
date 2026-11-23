@@ -68,6 +68,7 @@ class Config:
     flatline_ticks: int = 5       # this many identical readings = stuck sensor
     fall_limit: float = 1.2       # a fall bigger than this per tick, while the pump fills, is impossible
     roughness_limit: float = 0.9  # mass-balance error jumping around more than this = forged data
+    impossible_jumps: int = 2     # ...and at least this many jumps bigger than noise can physically make
     residual_limit: float = 0.5   # steady mass-balance error bigger than this = physical fault
     fault_fit: int = 8            # seconds of running mass-balance total checked for a straight line
     straight_limit: float = 0.4   # how far the running total may wander from a straight line
@@ -108,6 +109,8 @@ class Config:
     water_rate: float = 0.05      # water ingress, e.g. through a roof seal (% of tank per second)
     thin_rate: float = 0.01       # wall thinning: corrosion allowance lost per second (time compressed: months in minutes)
     thin_limit: float = 1.0       # corrosion probe: this much allowance lost within slow_window = abnormal corrosion
+    rain_rate: float = 0.004      # healthy-day disturbance: rain filling the bund (same units as the bund level, per second)
+    thermal_swing: float = 0.5    # healthy-day disturbance: level change from the day's warming and cooling (+/- %)
 
     def __post_init__(self) -> None:
         """Refuse settings the simulator or detector cannot work with."""
