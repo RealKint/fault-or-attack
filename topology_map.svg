@@ -20,7 +20,7 @@
 <text x="18" y="926" font-size="13" font-weight="600" fill="#3c4045">Response and recovery · people and offline copies</text>
 <text x="30" y="385" font-size="12" font-style="italic" font-weight="600" fill="#3c4045">Modbus: no authentication</text>
 <text x="770" y="888" font-size="12" font-style="italic" font-weight="600" fill="#3c4045">status-only links out</text>
-<text x="24" y="784" font-size="12" font-style="italic" font-weight="600" fill="#3c4045">Site signals, hard-wired to the detector · drone and perimeter radar: partner technology, not built</text>
+<text x="24" y="784" font-size="12" font-style="italic" font-weight="600" fill="#3c4045">Site signals, hard-wired to the detector · drone radar and fibre-optic digging sensors: partner technology, not built</text>
 <polyline points="214,262 240,262" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <polyline points="440,262 470,262" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <polyline points="24,391 730,391" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="6"/>
@@ -240,6 +240,8 @@
 <text x="482" y="819.0" font-size="15" font-weight="600" fill="#17191b">Gas detector + bund level</text>
 <rect x="762" y="826" width="220" height="40" rx="6" fill="#e2dfd7" stroke="#2f6a39" stroke-width="2.5"/>
 <text x="774" y="851.0" font-size="15" font-weight="600" fill="#17191b">Water-interface probe</text>
+<rect x="24" y="842" width="214" height="34" rx="6" fill="#e2dfd7" stroke="#2f6a39" stroke-width="2.5"/>
+<text x="36" y="864.0" font-size="15" font-weight="600" fill="#17191b">Corrosion probe (ER)</text>
 </g>
 <line x1="8" y1="1080" x2="34" y2="1080" stroke="#3f7aa6" stroke-width="3"/>
 <text x="40" y="1085" font-size="13" fill="#3c4045">Network</text>

@@ -102,7 +102,7 @@ class FaultOrAttackDetector:
                      self._replay, self._probe_echo, self._ignores_valve, self._physics_violation,
                      self._hardwired_witness, self._pump_no_run,
                      self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance,
-                     self._slow_balance):
+                     self._slow_balance, self._wall_thinning):
             verdict = rule()
             if verdict:
                 return self._fuse(verdict)
@@ -325,6 +325,22 @@ class FaultOrAttackDetector:
             return self._v("PHYSICAL", "Physical damage",
                            "Within a few seconds " + ", ".join(signs) + ". Worn parts fail one at a time; several "
                            "independent signs at once mean physical damage. Keep people clear and call site security.")
+
+    def _wall_thinning(self):
+        """Corrosion before it leaks: the hard-wired electrical-resistance probe shows the pipe wall wearing away."""
+        cfg = self.cfg
+        w = cfg.slow_window
+        if len(self.h) <= w:
+            return None
+        r, old = self.h[-1], self.h[-w - 1]
+        if r.wall is None or old.wall is None:
+            return None
+        lost = old.wall - r.wall
+        if lost > cfg.thin_limit:
+            return self._v("FAULT", "Pipe wall thinning",
+                           f"The corrosion probe shows {lost:.1f}% of the corrosion allowance gone in {w} s, far faster "
+                           f"than normal ({r.wall:.0f}% left). Nothing has leaked yet: inspect the line (ultrasonic "
+                           "thickness) and plan the repair before it does.")
 
     def _slow_balance(self):
         """Slow leaks and gains, such as corrosion or water ingress, far too small for the per-second checks.

@@ -4,6 +4,7 @@ Scenario                        Truth       Correct  Before the limit  Mean time
 ---------------------------------------------------------------------------------------------------
 Corrosion leak                  FAULT       18/20           18/20          186 s   FAULT: Slow leak into the bund
 Water getting into the tank     FAULT       18/20           18/20          176 s   FAULT: Water getting into the tank
+Pipe wall thinning              FAULT       20/20           20/20           97 s   FAULT: Pipe wall thinning
 Leak during planned maintenance FAULT       20/20           20/20            6 s   FAULT: Slow leak into the bund
 Fuel theft                      PHYSICAL    20/20           20/20           60 s   PHYSICAL: Product theft
 Valve forced by hand            PHYSICAL    20/20           20/20            3 s   PHYSICAL: On-site tampering or theft
@@ -12,7 +13,7 @@ Insider tampers with sensor B   PHYSICAL    20/20           20/20            0 s
 Drone strike                    PHYSICAL    20/20           20/20            1 s   PHYSICAL: Physical damage
 Planned bypass for testing      NONE        18/20           18/20              -   nothing
 ---------------------------------------------------------------------------------------------------
-Overall: 174/180 correct. PHYSICAL = send site security; NONE = planned work, must stay silent.
+Overall: 194/200 correct. PHYSICAL = send site security; NONE = planned work, must stay silent.
 
 Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
 
@@ -21,6 +22,7 @@ Scenario                        Truth       Correct  Before the limit  Mean time
 ---------------------------------------------------------------------------------------------------
 Corrosion leak                  FAULT       20/20           20/20          187 s   FAULT: Slow leak into the bund
 Water getting into the tank     FAULT       20/20           20/20          178 s   FAULT: Water getting into the tank
+Pipe wall thinning              FAULT       20/20           20/20           97 s   FAULT: Pipe wall thinning
 Leak during planned maintenance FAULT       20/20           20/20            6 s   FAULT: Slow leak into the bund
 Fuel theft                      PHYSICAL    20/20           20/20           60 s   PHYSICAL: Product theft
 Valve forced by hand            PHYSICAL    20/20           20/20            1 s   PHYSICAL: On-site tampering or theft
@@ -29,5 +31,5 @@ Insider tampers with sensor B   PHYSICAL    20/20           20/20            0 s
 Drone strike                    PHYSICAL    20/20           20/20            1 s   PHYSICAL: Physical damage
 Planned bypass for testing      NONE        20/20           20/20              -   nothing
 ---------------------------------------------------------------------------------------------------
-Overall: 180/180 correct. PHYSICAL = send site security; NONE = planned work, must stay silent.
+Overall: 200/200 correct. PHYSICAL = send site security; NONE = planned work, must stay silent.
 

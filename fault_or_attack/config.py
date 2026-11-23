@@ -106,6 +106,8 @@ class Config:
     theft_flow: float = 0.15      # theft through an illegal tap outside the bund (% of tank per second)
     drone_leak: float = 4.0       # drone strike: the tank is holed (% of tank per second)
     water_rate: float = 0.05      # water ingress, e.g. through a roof seal (% of tank per second)
+    thin_rate: float = 0.01       # wall thinning: corrosion allowance lost per second (time compressed: months in minutes)
+    thin_limit: float = 1.0       # corrosion probe: this much allowance lost within slow_window = abnormal corrosion
 
     def __post_init__(self) -> None:
         """Refuse settings the simulator or detector cannot work with."""

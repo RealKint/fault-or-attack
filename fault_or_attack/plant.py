@@ -77,6 +77,7 @@ class Record:
     gas_alarm: bool = False     # the hydrocarbon gas detector by the tank is alarming
     bund: float = 0.0           # liquid collected in the bund (spill wall) around the tank, % of tank volume
     interface: float | None = None  # hard-wired water-interface probe: height of the water layer, % of tank
+    wall: float | None = None   # hard-wired electrical-resistance corrosion probe: corrosion allowance left, %
 
 
 def screen_alarm(trusted: float, power_ok: bool, mismatch: bool, a_lost: bool, backup: bool,
@@ -135,6 +136,8 @@ class TankSimulator:
         self.attack_rng = random.Random(seed + 104729)  # the attacker's choices
         self.probe_rng = random.Random(seed + 31337)    # the defender's secret probe schedule
         self.site_rng = random.Random(seed + 4243)      # physical side: the water-interface probe's noise
+        self.er_rng = random.Random(seed + 6007)        # physical side: the corrosion probe's noise
+        self.wall = 80.0                                # corrosion allowance left in the monitored pipe, %
 
         self.tick = 0
         self.level = self.cfg.start_level
@@ -374,6 +377,8 @@ class TankSimulator:
         lost = min(lost, self.level)                                   # an empty tank cannot lose more
         outflow += lost
         self.bund += min(in_bund, lost)                                # only a leak inside the bund collects there
+        if f == "thinning":
+            self.wall = max(0.0, self.wall - cfg.thin_rate)
         if f == "water":
             self.level = min(100.0, self.level + cfg.water_rate)        # rainwater adds to the total level ...
             self.water += cfg.water_rate                                # ... and settles under the product
@@ -410,6 +415,7 @@ class TankSimulator:
             gas_alarm=power_ok and (self.bund >= cfg.gas_threshold or f == "drone"),
             bund=round(self.bund, 3),
             interface=self._quantize(max(0.0, self.water + 0.05 * (self.site_rng.random() - 0.5))) if power_ok else None,
+            wall=round(self.wall + 0.1 * (self.er_rng.random() - 0.5), 2) if power_ok else None,
         )
         self.tick += 1
         return rec

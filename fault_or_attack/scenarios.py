@@ -134,6 +134,13 @@ PHYSICAL_SCENARIOS: dict[str, ScenarioInfo] = {
         "Rainwater seeps in through a roof seal and settles at the bottom of the tank, under the product.",
         "The level gains water nothing explains, and the hard-wired water-interface probe shows the water layer rising.",
     ),
+    "thinning": ScenarioInfo(
+        "Pipe wall thinning", "Equipment fault (early warning)",
+        "Corrosion eats into a pipe wall faster than normal, but it has not leaked yet. (Time is compressed: months of "
+        "thinning happen in minutes.)",
+        "The hard-wired electrical-resistance corrosion probe shows the corrosion allowance disappearing: inspect and "
+        "repair before it leaks. No physics check could see this, because nothing is lost yet.",
+    ),
     "maint_leak": ScenarioInfo(
         "Leak during planned maintenance", "Equipment fault",
         "A real leak starts while technicians are on site under a work order.",

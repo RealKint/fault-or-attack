@@ -23,7 +23,7 @@ The detector checks every reading against the tank's physics and the network, th
 | Simple plant, 1,440 runs | 99.9% right |
 | Realistic plant (PI valve) | 93.1% right |
 | Normal running, 20 hours | 0 false alarms (a wider check of 25 healthy hours per plant found 1 false call on the simple plant and 2 on the realistic plant, all from the older per-second rules) |
-| Physical side: corrosion, water ingress, theft, tampering, drone damage, planned work (360 runs) | 354 right; the 6 misses are that one older false call |
+| Physical side: corrosion, wall thinning, water ingress, theft, tampering, drone damage, planned work (400 runs) | 394 right; the 6 misses are that one older false call |
 | Real HAI testbed data, tank attacks | 7 of 8 caught (test day 1: 3 of 3, day 2: 4 of 5); 7 of 24 attacks overall, as most target other parts of the plant; 4 false alarms in 42 hours |
 
 ![Accuracy dashboard](accuracy_dashboard.png)
@@ -99,7 +99,9 @@ python "FAULT OR ATTACK.py" --physical                # simple plant
 python "FAULT OR ATTACK.py" --physical --realistic    # realistic plant
 ```
 
-Not every problem comes over the network. Hard-wired site signals (tamper switches, gate and badge events with work orders, the safety bypass flag, a gas detector, the bund level and a water-interface probe) let the detector give a third answer, **PHYSICAL: send site security**, for a valve forced by hand, fuel theft, an insider tampering with sensor B, a safety trip bypassed with no work order, or drone damage. A slow-balance check averages the water balance over five minutes, where sensor noise cancels out, and catches corrosion leaks and water ingress that the per-second checks miss (a leak under about 0.5% of the tank per second went unseen before). Planned work under a work order stays a FAULT or stays silent. Results: `reports/physical_side.txt`.
+Not every problem comes over the network. Hard-wired site signals (tamper switches, gate and badge events with work orders, the safety bypass flag, a gas detector, the bund level and a water-interface probe) let the detector give a third answer, **PHYSICAL: send site security**, for a valve forced by hand, fuel theft, an insider tampering with sensor B, a safety trip bypassed with no work order, or drone damage. A slow-balance check averages the water balance over five minutes, where sensor noise cancels out, and catches corrosion leaks and water ingress that the per-second checks miss (a leak under about 0.5% of the tank per second went unseen before). An electrical-resistance corrosion probe warns of a thinning pipe wall before anything leaks. Planned work under a work order stays a FAULT or stays silent. Results: `reports/physical_side.txt`.
+
+The slow-balance check is the tank version of **computational pipeline monitoring (API RP 1130)**, and the `--physical` runs are the kind of simulated-leak testing **API RP 1175** asks leak detection programmes to do. The bypass verdict flags the safety-critical equipment deviations that the Petroleum Authority's **Directive No. 01/2021 (Asset Integrity Management)** requires operators to close out and report, and the detector's records can support a major-hazard **safety case** under SHENA's COMAH regulations. It is a safety net between inspections (API 510, 570 and 653), not a replacement for them.
 
 ## Known limits
 
