@@ -168,3 +168,45 @@ The detector's advice for every ATTACK verdict now names BruCERT and the Commiss
 One design rule is now drawn on the map: **the detector only advises the operator and has no line to the overfill trip.** The AI Security Policy Guidelines (9.2.2) say an automated output that could affect a safety-relevant function must not take effect without an authorised person's approval, and API 2350 wants the overfill prevention system independent of the control system. A data diode also changes the attack story: network commands from office IT can no longer reach the controller, so the remaining ways in are removable media, vendor laptops and remote-access links, which the field tap detector (N1) and the controller health check are placed to catch.
 
 Still unknown: the reporting deadline under section 16 of the Act. Neither the Act nor the Code states it; it is "the prescribed period", to be set by regulation.
+
+## Addendum: risk review of every box, and a stress test against an adaptive attacker (23 November 2026)
+
+*Every box on the map was questioned against classic failures and four current threats: AI agents, AI-generated data, AI-assisted reverse engineering, and swarms (many drones, or many sites at once). Threat facts come from 2026 reporting (Booz Allen's OT lab test, Dragos, the Forescout WAGO case, CISA advisories, refinery drone strikes) and are mostly secondary sources. The stress-test numbers are measured with this project's simulator.*
+
+### What changed on the map
+- **Two missing threat boxes**: *Supplier / vendor* and *Cellular modem / remote access*, with an attack path from the modem around the data diode into the field network. Both are real today: the French blood bank attack (November 2026) came through a refrigeration supplier's component, and Dragos and CISA flagged cellular gateways as a 2026 blind spot.
+- **A physical-attack path**: *Drone / sabotage* to Tank 1. Drone swarms hit refineries repeatedly in 2026; today the detector would call physical damage a FAULT.
+- **Known-weakness markers (red !)** on the virtual level, the 2-out-of-3 vote and the detector, with the reason in each box's pop-up on the website.
+
+### The weaknesses found, most serious first
+1. **The virtual level is not independent.** It is worked out from the pump feedback and the flow meter, which travel over the network, so a coordinated forgery fools it and the 2-out-of-3 vote can be two liars against one honest sensor. Fix: work it out from hard-wired signals (motor current, the power monitor).
+2. **The detector's code is public**, so an attacker or AI agent can rehearse against it offline. The secret probe schedule can also be learned by reverse-engineering the controller. Fix: site-secret settings, and let the detector choose probe times with a site secret.
+3. **Learned thresholds can be poisoned** if the attacker is present while they are learned. Fix: learn only from checked periods, sign the result.
+4. **No "physical damage" answer**: drone or sabotage damage is called a FAULT.
+5. **An attack disguised as a power cut** (a remotely tripped breaker) is called a FAULT, because the outage is real.
+6. **"First rule wins"** can mislabel overlapping events (a fault and an attack together, or a swarm across tanks).
+7. **Nothing watches the detector**: if it stops, nobody is told. Fix: a heartbeat alarm.
+8. Approved settings (setpoints, API 2350 levels) can be changed; sensors A and B may share a vendor and power supply; logs can be wiped first; a "diode" may be a software firewall or be bypassed; the radio link can be jammed; forced repeated safety trips stop production while looking safe; operators may over-trust the detector or be flooded with alerts; attackers may pose as BruCERT.
+9. **The headline accuracy is measured against attackers who do not adapt.**
+
+### Stress test: "AI consistent forgery"
+A new stress scenario (`forge`, run with `python "FAULT OR ATTACK.py" --stress [--realistic]`) models an attacker on an already-trusted device who forces the pump on and runs a "digital twin" of a healthy tank: sensor A, the motor feedback and the valve position are forged so that every networked signal agrees with the physics the detector checks, including the secret probes' dips, which the attacker sees on the network. No new device appears and no foreign writes are sent. It is scored apart from the headline accuracy so earlier results stay comparable. Full output: `reports/stress_consistent_forgery.txt` (20 seeds x 3 duration modes = 60 runs per row).
+
+A new **hard-wired witness check** (`witness_check`, off by default) trusts only what the network cannot reach: if sensor A's mass balance closes neatly while backup sensor B gains water the forged feedback cannot explain, or the hard-wired high-level switch says "full" while sensor A reads normal, the networked story is a lie.
+
+| Plant | Witness check | Backup sensor B | Called ATTACK | Caught before overflow |
+|---|---|---|---|---|
+| Simple | off | off | 5/60 | 2/60 |
+| Simple | off | on | 2/60 | 2/60 |
+| Simple | on | off | 15/60 | 2/60 |
+| Simple | **on** | **on** | **60/60** | **60/60** (mean 7 s) |
+| Realistic | off | off | 13/60 | 12/60 |
+| Realistic | off | on | 7/60 | 7/60 |
+| Realistic | on | off | 32/60 | 12/60 |
+| Realistic | **on** | **on** | **60/60** | **60/60** (mean 14 s) |
+
+What this shows:
+- **Without the new check, the detector loses to this attacker.** Most runs end as UNKNOWN or a wrong FAULT label, and the tank overflows first.
+- **With the check and a hard-wired backup sensor, every run is caught before the overflow.** Without sensor B, the check can only use the high-level switch, which trips when the tank is already full, so it names the attack but too late to stop the spill. Backup sensor B is not optional against this attacker.
+- **The check does not break anything else.** Over the full evaluation (20 seeds, both plants) it raised no false alarms (0 in 10 healthy hours per plant) and changed no correct call to a wrong one. It improved the overall score from 1433/1440 to 1439/1440 on the simple plant and from 1303/1440 to 1341/1440 on the realistic plant, mostly because the replay-with-fresh-noise attack is now caught more often (realistic plant: 64/120 to 101/120). It is still off by default only so the published numbers do not change without a deliberate decision.
+- **Limit**: an attacker who can also reach backup sensor B (physical access, an insider, or a shared vendor weakness) defeats this check. Independence of sensor B is the whole defence.

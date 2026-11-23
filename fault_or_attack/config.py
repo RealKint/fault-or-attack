@@ -88,6 +88,11 @@ class Config:
     flat_runs_limit: int = 0      # ... and this many in a minute is a fault (0 = off; learned from normal data)
     law_limit: float = 0.5        # PID mode: valve command this far from what the control law gives
     fusion_window: int = 120      # a fault-like symptom this soon after a new network device = attack
+    # Hard-wired witness check (off by default so the headline results stay comparable; --stress measures it).
+    # Catches an attacker who forges every networked signal consistently: only hard-wired witnesses disagree.
+    witness_check: bool = False
+    witness_window: int = 5       # seconds the hard-wired witness must disagree for
+    witness_gain: float = 1.0     # backup sensor B gaining this much per second more than the forged feedback allows
 
     def __post_init__(self) -> None:
         """Refuse settings the simulator or detector cannot work with."""

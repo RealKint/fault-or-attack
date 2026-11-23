@@ -92,7 +92,8 @@ class FaultOrAttackDetector:
             self._update_control_checks(rec)
         for rule in (self._power, self._network, self._foreign_writes, self._pump_without_command,
                      self._valve_tracking, self._control_law,
-                     self._replay, self._probe_echo, self._ignores_valve, self._physics_violation, self._pump_no_run,
+                     self._replay, self._probe_echo, self._ignores_valve, self._physics_violation,
+                     self._hardwired_witness, self._pump_no_run,
                      self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance):
             verdict = rule()
             if verdict:
@@ -370,6 +371,42 @@ class FaultOrAttackDetector:
             return self._v("ATTACK", "False data injection",
                            f"Sensor A's mass-balance error typically jumps by {rough:.1f}%/s "
                            "(healthy is about 0.3). Physical faults are smooth; forged data is not.")
+
+    def _hardwired_witness(self):
+        """Witnesses an attacker on the network cannot reach: backup sensor B and the high-level float switch.
+
+        An adaptive attacker can forge sensor A, the motor feedback and the valve position so that they
+        agree with each other and with physics, so every networked check passes. A worn part cannot do
+        that: it breaks the mass balance of sensor A itself. So if sensor A's mass balance closes neatly
+        while a hard-wired witness shows water the forged feedback cannot explain, the networked story is
+        a lie. (Off unless witness_check is set; see --stress.)"""
+        cfg = self.cfg
+        if not cfg.witness_check:
+            return None
+        n = cfg.witness_window
+        recent = self.h[-(n + 1):]
+        res_a = self._residuals(cfg.window)
+        if len(recent) < n + 1 or len(res_a) < cfg.window:
+            return None
+        a_closes = abs(mean(res_a)) < cfg.residual_limit and self._roughness(res_a) <= cfg.roughness_limit
+        if not a_closes:
+            return None                      # sensor A's own physics is broken: the fault rules decide
+        # Witness 1: backup sensor B gains water that the (forged) pump feedback and valve cannot explain.
+        gains = [b.sensor_b - a.sensor_b - self._expected_change(a) for a, b in zip(recent, recent[1:])
+                 if a.sensor_b is not None and b.sensor_b is not None and a.outflow is not None]
+        if len(gains) == n and mean(gains) > cfg.witness_gain:
+            return self._v("ATTACK", "Consistent forgery",
+                           f"Sensor A, the motor feedback and the valve all tell the same healthy story, but hard-wired "
+                           f"backup sensor B gains {mean(gains):.1f}%/s more water than they allow. A worn part breaks "
+                           "its own physics; only someone forging every networked signal at once keeps it this tidy.")
+        # Witness 2: the hard-wired high-level switch says the tank is full, while sensor A reads normal.
+        r = self.h[-1]
+        if all(x.switch_high for x in recent) and r.sensor is not None and r.sensor < cfg.high_alarm - 10:
+            return self._v("ATTACK", "Consistent forgery",
+                           f"The hard-wired high-level switch says the tank is full, yet sensor A reads {r.sensor:.0f}% "
+                           "and its readings still obey physics perfectly. A failing sensor does not stay this "
+                           "consistent with the pump: every networked signal is being forged.")
+        return None
 
     def _pump_no_run(self):
         last = self.h[-2:]

@@ -8,7 +8,7 @@ from statistics import mean
 from .config import Config
 from .detector import Verdict, diagnose
 from .plant import Record, TankSimulator
-from .scenarios import ATTACKS, MODES, SCENARIOS, SMART_ATTACKS
+from .scenarios import ATTACKS, MODES, SCENARIOS, SMART_ATTACKS, STRESS_ATTACKS
 
 
 SEVERITY = {"ok": 0, "warn": 1, "danger": 2}
@@ -200,3 +200,49 @@ def print_eval(cfg: Config, seeds: int) -> dict:
                    short_runs=seeds * 2, long_alarms=alarms, hours=hours,
                    always_fault=n_fault / grand_total, always_attack=n_attack / grand_total)
     return results
+
+
+def print_stress(cfg: Config, seeds: int) -> dict:
+    """Score the adaptive-attacker stress tests, with the hard-wired witness check off and on.
+
+    Kept apart from print_eval so the headline accuracy stays comparable with earlier runs. Besides the
+    verdict, it records whether the tank overflowed before a correct verdict arrived."""
+    plant = "realistic plant (PID valve)" if cfg.control == "pid" else "simple plant (on/off pump)"
+    print()
+    print(f"Stress test on the {plant}: an adaptive attacker who knows how the detector works")
+    print(f"over {seeds} seeds x {len(MODES)} duration modes, scored separately from the headline accuracy")
+    header = (f"{'Scenario':<24}{'Witness check':<15}{'Backup B':<10}{'Correct':>9}{'FAULT':>7}{'UNKNOWN':>9}"
+              f"{'nothing':>9}{'Caught before overflow':>24}{'Mean time':>11}")
+    print(header)
+    print("-" * len(header))
+    out: dict = {"seeds": seeds, "plant": cfg.control, "rows": []}
+    for key, info in STRESS_ATTACKS.items():
+        for witness in (False, True):
+            c = replace(cfg, witness_check=witness)
+            for backup in (False, True):
+                calls = {"ATTACK": 0, "FAULT": 0, "UNKNOWN": 0, "none": 0}
+                before = total = 0
+                delays: list[int] = []
+                for seed in range(1, seeds + 1):
+                    for mode in MODES:
+                        records = TankSimulator(c, key, mode, backup, seed).run()
+                        v, _ = diagnose(records, c)
+                        total += 1
+                        calls[v.label if v else "none"] += 1
+                        ok = v is not None and v.label == info.kind and v.tick >= c.inject_at
+                        if ok:
+                            delays.append(v.tick - c.inject_at)
+                            spill = next((r.tick for r in records if r.level >= 99.5), None)
+                            before += spill is None or v.tick < spill
+                avg = f"{mean(delays):.0f} s" if delays else "-"
+                print(f"{info.name:<24}{'on' if witness else 'off':<15}{'on' if backup else 'off':<10}"
+                      f"{calls['ATTACK']:>4}/{total:<4}{calls['FAULT']:>7}{calls['UNKNOWN']:>9}{calls['none']:>9}"
+                      f"{before:>17}/{total:<6}{avg:>11}")
+                out["rows"].append({"key": key, "witness": witness, "backup": backup, "total": total,
+                                    "calls": calls, "before_overflow": before,
+                                    "delay": mean(delays) if delays else None})
+    print("-" * len(header))
+    print("Correct = called ATTACK after the attack began. Caught before overflow = correct, and before the real tank")
+    print("reached 99.5%. In transient and intermittent runs the attack may stop before the tank fills, so those count.")
+    print()
+    return out

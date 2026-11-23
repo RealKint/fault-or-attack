@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 
 from .config import PROJECT_DIR, Config, realistic
-from .evaluation import print_eval, print_single, print_table
+from .evaluation import print_eval, print_single, print_stress, print_table
 from .hai_validation import HaiDataError, hai_main
 from .learning import learn_from_normal
 from .live_demo import animate_live
@@ -33,6 +33,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--backup", action="store_true", help="add a second, healthy, hard-wired level sensor")
     p.add_argument("--all", action="store_true", help="run every fault and attack, with and without the backup sensor")
     p.add_argument("--eval", type=int, metavar="SEEDS", help="score the detector over this many random seeds")
+    p.add_argument("--stress", action="store_true",
+                   help="stress test against an adaptive attacker who forges every networked signal consistently, "
+                        "with the hard-wired witness check off and on (scored apart from the headline accuracy; "
+                        "--eval SEEDS sets the seeds, default 20; --realistic for the PID plant)")
     p.add_argument("--dashboard", action="store_true",
                    help="score both plants and draw a one-page accuracy dashboard "
                         "(saved to accuracy_dashboard.png; --save to choose, --plot to open a window)")
@@ -132,6 +136,10 @@ def main(argv: list[str] | None = None) -> None:
         p.error(f"the replay attack needs at least {cfg.replay_match} healthy seconds to record: "
                 f"use --inject-at {cfg.replay_match} or more")
     want_plot = args.plot or args.save
+
+    if args.stress:
+        print_stress(cfg, args.eval or 20)
+        return
 
     if args.eval is not None:
         print_eval(cfg, args.eval)

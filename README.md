@@ -82,9 +82,20 @@ reports/               research reports and saved evaluation runs
 research_notes/        notes behind the reports
 ```
 
-## Known limit
+## Stress test: an attacker who knows the detector
+
+```bash
+python "FAULT OR ATTACK.py" --stress                # simple plant
+python "FAULT OR ATTACK.py" --stress --realistic    # realistic plant
+```
+
+An adaptive attacker (or AI agent) on a trusted device forges sensor A, the motor feedback and the valve position so that every networked signal agrees with physics. Without help the detector loses to it. A new hard-wired witness check (backup sensor B and the high-level switch) catches it in every run before the tank overflows, when backup sensor B is fitted. Results and the risk review are in `reports/stress_consistent_forgery.txt` and the topology report.
+
+## Known limits
 
 An insider who fakes a slow, smooth drift from a device that is already trusted leaves no network trace, and physics alone cannot tell that from real sensor drift.
+
+An attacker who forges every networked signal consistently can only be caught by hard-wired witnesses (see the stress test). If they can also reach backup sensor B, nothing in this project catches them. The headline accuracy above is measured against attackers who do not adapt to the detector.
 
 ## Credits
 

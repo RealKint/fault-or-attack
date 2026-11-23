@@ -244,6 +244,8 @@ footer { margin-top: 0; }
 #topo .tn .ts { font: 13px var(--font-body); fill: var(--ink-2); }
 #topo .tn .bd { fill: var(--fault); }
 #topo .tn .bt { font: 700 12px var(--font-body); fill: #1d1406; }
+#topo .tn .rk { fill: var(--attack); }
+#topo .tn .rt { font: 800 13px var(--font-body); fill: #fff; }
 #topo .lk { fill: none; stroke-linejoin: round; stroke-linecap: round; }
 #topo .lk.net { stroke: var(--water); stroke-width: 3; }
 #topo .lk.bus { stroke: var(--water); stroke-width: 6; }
@@ -268,6 +270,8 @@ footer { margin-top: 0; }
 .topo-legend .k.box { width: 18px; height: 12px; border: 2px solid var(--ink-2); }
 .topo-legend .k.box.added { border-color: var(--ok); }
 .topo-legend .k.box.up { border: 2px dashed var(--fault); }
+.topo-legend .k.box.threat { border-color: var(--attack); }
+.topo-legend .k.risk { width: 16px; height: 16px; border-radius: 50%; background: var(--attack); color: #fff; font: 800 12px/16px var(--font-body); text-align: center; }
 .topo-legend .k.ln { width: 22px; height: 0; border-top: 3px solid var(--water); }
 .topo-legend .k.ln.wire { border-top-color: var(--ink-2); }
 .topo-legend .k.ln.pipe { border-top: 7px solid var(--water); opacity: .45; }
@@ -1020,6 +1024,8 @@ footer .deep .mark span { background: var(--deep); }
         <span><i class="k ln pipe"></i>Water or fuel pipe</span>
         <span><i class="k ln attack"></i>Attacker's way in</span>
         <span><i class="k ln report"></i>Report</span>
+        <span><i class="k box threat"></i>Threat that exists today</span>
+        <span><i class="k risk">!</i>Known weakness</span>
       </div>
       </div>
       <div class="topo-info">
@@ -2190,6 +2196,8 @@ Reported to the police: not yet`)}</pre>
       ["att", 24, 34, 190, 70, "Attacker", "often far away, online", [], "threat"],
       ["it", 240, 34, 200, 70, "Office IT network", "billing, email, planning", [8, 3]],
       ["bru", 470, 34, 220, 70, "BruCERT · CSB", "where attacks are reported", [], "added"],
+      ["vend", 720, 30, 260, 32, "Supplier / vendor", "", [], "threat"],
+      ["modem", 720, 70, 260, 32, "Cellular modem / remote", "", [], "threat"],
       ["fw", 240, 128, 200, 26, "Data diode · one-way", "", [3]],
       ["n2", 470, 128, 210, 26, "Network detector N2", "", [3]],
       ["log", 740, 128, 240, 26, "Log store · 12 months", "", [3]],
@@ -2197,7 +2205,7 @@ Reported to the police: not yet`)}</pre>
       ["cfg", 24, 262, 190, 50, "Setpoint check", "on the controller", [5]],
       ["ctl", 240, 190, 200, 64, "Controller (PLC)", "pump logic · secret probes"],
       ["det", 470, 190, 250, 64, "Detector", "physics + network → advice"],
-      ["vl", 470, 262, 120, 50, "Virtual level", "", [2]],
+      ["vl", 470, 262, 120, 50, "Virtual level", "networked", [2]],
       ["vote", 600, 262, 120, 50, "2-of-3 vote", "", [2]],
       ["sup", 760, 190, 220, 40, "Alarm suppression", "", [4]],
       ["hlth", 760, 236, 220, 40, "Controller health", "", [6]],
@@ -2206,6 +2214,7 @@ Reported to the police: not yet`)}</pre>
       ["pump", 24, 400, 170, 60, "Pump / PID valve", "fills the tank"],
       ["inf", 24, 476, 170, 60, "Outside inflow", "someone else's line", [12]],
       ["bun", 24, 560, 170, 60, "Buncefield replay", "a real tank overfill", [1]],
+      ["drone", 24, 636, 170, 56, "Drone / sabotage", "physical damage", [], "threat"],
       ["t1", 220, 392, 190, 92, "Tank 1", "the plant today"],
       ["sa", 220, 492, 190, 46, "Sensor A · networked", ""],
       ["sw", 220, 546, 190, 50, "Status word", "+ fault history", [6]],
@@ -2246,7 +2255,18 @@ Reported to the police: not yet`)}</pre>
       [[[760, 154], [760, 170], [712, 170], [712, 190]], "net", [3]],
       [[[720, 210], [760, 210]], "net", [4]], [[[870, 230], [870, 236]], "net", [6]], [[[870, 276], [870, 282]], "net", [9]],
       [[[194, 605], [200, 605], [200, 703], [220, 703]], "note", [1]],
+      // added 23 Nov 2026, risk review: threats that are real today, drawn in both views
+      [[[850, 62], [850, 70]], "attack"],
+      [[[975, 102], [975, 112], [988, 112], [988, 330], [730, 330], [730, 351]], "attack"],
+      [[[194, 664], [212, 664], [212, 476], [220, 476]], "attack"],
     ];
+    // known weaknesses found in the risk review (23 Nov 2026): drawn as a red "!" on the box
+    const RISK = [
+      ["vl", "It is worked out from the pump feedback and the flow meter, which travel over the network. An attacker who forges them together with sensor A fools the virtual level too, so the vote can be two liars against one honest sensor. Fix: work it out from hard-wired signals (motor current, the power monitor)."],
+      ["vote", "Only as good as the independence of its three inputs. Two networked inputs forged together outvote the honest one."],
+      ["det", "Its code is public, so an attacker or an AI agent can rehearse attacks against it offline. Learned thresholds can be poisoned if the attacker is present while they are learned, and nothing raises an alarm if the detector itself goes quiet. Fixes: site-secret settings, learning only from checked periods, a heartbeat alarm. The new hard-wired witness check (--stress) catches the 'forge everything consistently' attack when backup sensor B is fitted."],
+    ];
+    const RISKS = Object.fromEntries(RISK);
     const NS2 = "http://www.w3.org/2000/svg";
     const g0 = el("g", {}, svg), gl = el("g", {}, svg), gn = el("g", {}, svg);
     for (const [x, y, w, h, label, cls] of ZONES) { const g = el("g", { class: cls || "" }, g0);
@@ -2268,6 +2288,10 @@ Reported to the police: not yet`)}</pre>
       if (ups.length && kind !== "added") { const n = Math.min(...ups);
         el("circle", { cx: x + w - 13, cy: y + (h < 30 ? h / 2 : 13), r: 10, class: "bd" }, g);
         el("text", { x: x + w - 13, y: y + (h < 30 ? h / 2 : 13) + 4, "text-anchor": "middle", class: "bt" }, g).textContent = n; }
+      // the "!" sits top right, or bottom right when the rank badge already takes the top right corner
+      if (RISKS[id]) { const badge = ups.length && kind !== "added", cx = x + w - 13, cy = badge ? y + h - 12 : y + (h < 30 ? h / 2 : 13);
+        el("circle", { cx, cy, r: 9, class: "rk" }, g);
+        el("text", { x: cx, y: cy + 4, "text-anchor": "middle", class: "rt" }, g).textContent = "!"; }
     }
     // the field-network label would collide with the boxes in its thin row; move it to the right end
     // (the DMZ label stays at the left, where the row is empty, because the log store fills the right end)
@@ -2313,7 +2337,7 @@ Reported to the police: not yet`)}</pre>
     // showing an upgrade highlights every box and line it touches
     let sel = null, tr = null, qz = null;   // tr: the story being followed, { key, i }
     const capToday = `<span><b>Today</b> the network is flat: an attacker who gets in lands straight on the same network as the controller and sensor A (red dashed line). Backup sensor B, the switches and the power monitor are already wired straight to the detector.</span>`;
-    const capDefault = `<b>Click any box</b> to see what it is and how it helps. A dashed amber box is a planned upgrade, and its number is its rank: 1 gives the most for the least work. The detector only <b>advises</b> the operator: it has no line to the overfill trip, which acts on its own.`;
+    const capDefault = `<b>Click any box</b> to see what it is and how it helps. A dashed amber box is a planned upgrade, and its number is its rank: 1 gives the most for the least work. The detector only <b>advises</b> the operator: it has no line to the overfill trip, which acts on its own. A red <b>!</b> marks a known weakness, and red boxes are threats that exist today.`;
     // For each box: [what it is, how it helps the system]
     const DESC = {
       att: ["Someone trying to break in, usually from far away over the internet.", "Puts the threat on the map, so you can see which defences stand between the attacker and the pumps."],
@@ -2349,6 +2373,9 @@ Reported to the police: not yet`)}</pre>
       sup: ["A check that notices when an alarm is switched off or silenced without permission.", "An attacker who silences the High-High alarm can let a tank overflow without anyone hearing. Code of Practice clause 10.4.3 asks critical sites to detect this."],
       hlth: ["A learned picture of the controller's normal cycle time, uptime and stop state.", "A controller that suddenly runs slower, restarts or stops unexpectedly may have been reprogrammed. Code of Practice clause 10.4.4 asks for these baselines."],
       rsp: ["A learned picture of how long the valve and pump normally take to respond to a command.", "A worn valve slows down gradually (a fault); a command that is answered at once, or not at all, may be forged. Code of Practice clause 10.2.5 asks sites to watch physical processes for this."],
+      vend: ["Equipment makers and service companies with remote or on-site access to the plant.", "A common way in. In November 2026 attackers raised freezer temperatures at three French blood bank sites through a refrigeration supplier's component; a separate monitoring system caught it. Their access should be limited, logged and time-boxed."],
+      modem: ["A mobile-data modem or remote-access box that connects plant equipment straight to the outside world.", "It goes around the data diode, so the diode no longer protects anything. Dragos and CISA flagged cellular gateways as a blind spot in 2026. Find every one, and route remote access through a monitored, approved path."],
+      drone: ["A drone strike, explosive or other physical sabotage on the tanks or pipes.", "Drone swarms hit refineries repeatedly in 2026. Physical damage looks like a broken part, so today the detector would call it a FAULT. A planned 'physical damage: check site security' answer would cover sudden, large failures in several places at once."],
       lvl: ["API 2350's three tank levels: Critical High (overflow), High-High (stop filling now) and Maximum Working (normal top).", "For a Category 3 tank the operator has 15 minutes between High-High and Critical High. Showing the time left when the verdict arrives proves the detector is fast enough to matter."],
     };
     const NODE = Object.fromEntries(N.map(n => [n[0], n]));
@@ -2383,7 +2410,7 @@ Reported to the police: not yet`)}</pre>
     };
     const ICON_OF = { att: "person", it: "screen", bru: "mail", fw: "wall", n2: "eye", hmi: "screen", cfg: "gear", ctl: "chip", det: "shield",
       vl: "calc", vote: "vote", n1: "eye", pump: "pump", inf: "pipe", bun: "flame", t1: "tank", sa: "sensor", sw: "list", t2: "tank",
-      mtr: "meter", pip: "pipe", spf: "meter", prs: "meter", rtu: "radio", sb: "sensor", sws: "toggle", pwr: "bolt", sis: "shield", byp: "key", log: "list", sup: "eye", hlth: "chip", rsp: "meter", lvl: "tank" };
+      mtr: "meter", pip: "pipe", spf: "meter", prs: "meter", rtu: "radio", sb: "sensor", sws: "toggle", pwr: "bolt", sis: "shield", byp: "key", log: "list", sup: "eye", hlth: "chip", rsp: "meter", lvl: "tank", vend: "person", modem: "radio", drone: "flame" };
     const icon = (id) => `<svg class="pop-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[ICON_OF[id]] || IC.gear}</svg>`;
     // Clicking a box opens a mini box right next to it: what it is and how it helps.
     const wrap = svg.parentElement;   // the map's scrolling frame, which holds the mini box too
@@ -2410,6 +2437,7 @@ Reported to the police: not yet`)}</pre>
         <h3 id="topo-pop-t">${esc(label)}</h3>
         <p><b>What it is</b>${esc(what)}</p>
         <p><b>How it helps</b>${esc(helps)}</p>
+        ${RISKS[id] ? `<p><b>Known weakness</b>${esc(RISKS[id])}</p>` : ""}
         ${linked(id).length ? `<p><b>Connected to</b>${esc(linked(id).join(", "))}</p>` : ""}
         ${n ? `<button class="pop-more" id="topo-whole">Show all of upgrade ${n} on the map</button>` : ""}
         ${PLAY[id] ? `<button class="pop-more" id="topo-play">${PLAY[id]}</button>` : ""}

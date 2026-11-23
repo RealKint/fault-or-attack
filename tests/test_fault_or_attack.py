@@ -156,6 +156,24 @@ class TestDetector(unittest.TestCase):
                 self.assertRegex(cheat, r"(?<!cfg)\.(level|fault_active|valve_real)\b")
         self.assertNotRegex("self.cfg.pump_flow", r"(?<!cfg)\.pump_flow\b")
 
+    def test_consistent_forgery_stress_test(self):
+        """The adaptive attacker stays out of the headline scenarios. With backup sensor B and the
+        hard-wired witness check it is caught as an ATTACK before the tank overflows; without the check
+        the networked rules cannot call it an attack on the default run."""
+        from dataclasses import replace
+        from fault_or_attack.scenarios import STRESS_ATTACKS
+        self.assertNotIn("forge", SCENARIOS)
+        self.assertIn("forge", STRESS_ATTACKS)
+        for plant, cfg in (("simple", Config()), ("realistic", learn_from_normal(realistic(Config())))):
+            with self.subTest(plant=plant):
+                records = TankSimulator(replace(cfg, witness_check=True), "forge", "permanent", True).run()
+                verdict, _ = diagnose(records, replace(cfg, witness_check=True))
+                spill = next(r.tick for r in records if r.level >= 99.5)
+                self.assertEqual((verdict.label, verdict.culprit), ("ATTACK", "Consistent forgery"))
+                self.assertLess(verdict.tick, spill)
+                off, _ = diagnose(TankSimulator(cfg, "forge", "permanent", True).run(), cfg)
+                self.assertNotEqual(off.label if off else None, "ATTACK")
+
 
 class TestSettings(unittest.TestCase):
     def test_defaults_and_realistic_are_valid(self):

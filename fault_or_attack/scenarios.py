@@ -101,6 +101,25 @@ ATTACKS: dict[str, ScenarioInfo] = {
 SCENARIOS: dict[str, ScenarioInfo] = {**FAULTS, **ATTACKS}
 
 
+# Stress tests: adaptive attackers who know how the detector works (its code is public). They are
+# scored separately (--stress), not in the headline accuracy, so the published numbers stay comparable.
+STRESS_ATTACKS: dict[str, ScenarioInfo] = {
+    "forge": ScenarioInfo(
+        "AI consistent forgery", "Cyberattack (adaptive attacker on a trusted device)",
+        "An attacker (or an AI agent) on an already-trusted device forces the pump ON and runs a 'digital twin' "
+        "of a healthy tank. It forges sensor A, the motor feedback and the valve position so that every networked "
+        "signal agrees with the physics the detector checks, including the dips from the secret probes, which it "
+        "sees on the network. No new device appears and no foreign writes are sent.",
+        "Nothing on the network can catch it: every networked signal tells the same healthy story. Only "
+        "witnesses the attacker cannot reach can: hard-wired backup sensor B and the high-level float switch.",
+        kind="ATTACK",
+    ),
+}
+
+
+KNOWN_SCENARIOS: dict[str, ScenarioInfo] = {**SCENARIOS, **STRESS_ATTACKS}
+
+
 SMART_ATTACKS = ("smart_replay", "stealth")    # added after the detector was first tuned
 
 

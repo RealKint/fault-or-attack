@@ -7,7 +7,7 @@ from collections import deque
 from dataclasses import dataclass
 
 from .config import Config
-from .scenarios import MODES, NEW_DEVICE_ATTACKS, REPLAYS, SCENARIOS
+from .scenarios import KNOWN_SCENARIOS, MODES, NEW_DEVICE_ATTACKS, REPLAYS
 
 
 class RunRecords(list):
@@ -111,8 +111,8 @@ def classify(level: float, power_ok: bool, mismatch: bool, cfg: Config,
 class TankSimulator:
     def __init__(self, cfg: Config | None = None, fault: str | None = None,
                  mode: str = "permanent", backup_sensor: bool = False, seed: int = 1):
-        if fault is not None and fault not in SCENARIOS:
-            raise ValueError(f"Unknown fault or attack {fault!r}. Choose from {list(SCENARIOS)}")
+        if fault is not None and fault not in KNOWN_SCENARIOS:
+            raise ValueError(f"Unknown fault or attack {fault!r}. Choose from {list(KNOWN_SCENARIOS)}")
         if mode not in MODES:
             raise ValueError(f"Unknown mode {mode!r}. Choose from {list(MODES)}")
         self.cfg = cfg or Config()
@@ -143,6 +143,8 @@ class TankSimulator:
         self.fake: float | None = None          # false data injection: current fake value
         self.recording: deque[tuple[float, bool]] = deque(maxlen=self.cfg.replay_length)
         self.replay_i: int | None = None        # replay: position in the recording
+        self.twin: float | None = None          # consistent forgery: the attacker's fake "healthy" tank level
+        self.twin_noise = 0.0                   # consistent forgery: the attacker's own imitation of sensor noise
 
         # Realism: correlated sensor noise state, and the PID valve plant.
         self.noise_state = {"a": 0.0, "b": 0.0}
@@ -206,6 +208,17 @@ class TankSimulator:
             reading = self._clamp(reading - self.stealth_offset)
         else:
             self.stealth_offset = 0.0
+
+        if f == "forge":
+            # Adaptive attacker: report a simulated healthy tank (the twin) plus noise that imitates
+            # the real sensor's, so the mass balance, roughness and replay checks all see a healthy plant.
+            if self.twin is None:
+                self.twin = reading               # start from the live value: no jump at the switch-over
+            fresh = self.attack_rng.uniform(-cfg.sensor_noise, cfg.sensor_noise)
+            rho = cfg.noise_corr
+            self.twin_noise = rho * self.twin_noise + (1 - rho * rho) ** 0.5 * fresh if rho else fresh
+            return self._clamp(self.twin + self.twin_noise)
+        self.twin = None
 
         if f in REPLAYS and self.recording:
             if self.replay_i is None:
@@ -288,11 +301,11 @@ class TankSimulator:
                     self.last_probe_end = self.tick
             valve_cmd = 0.0 if (probing or not power_ok) else self.u
             self.cmd_out = power_ok
-            forced = f in ("command", *REPLAYS)      # the attacker forces the valve wide open
+            forced = f in ("command", "forge", *REPLAYS)   # the attacker forces the valve wide open
             self.valve_real += cfg.valve_lag * ((100.0 if forced else valve_cmd) - self.valve_real)
             self.valve_model += cfg.valve_lag * (valve_cmd - self.valve_model)
             # Replay malware reports where the valve SHOULD be, hiding that it is wide open.
-            valve_pos = self.valve_model if f in REPLAYS else self.valve_real
+            valve_pos = self.valve_model if f in (*REPLAYS, "forge") else self.valve_real
             pump_really_runs = power_ok and f != "pump"
             feedback = pump_really_runs
             inflow = cfg.pump_flow * self.valve_real / 100 if pump_really_runs else 0.0
@@ -320,12 +333,12 @@ class TankSimulator:
             pump_really_runs = self.cmd_out
             if f == "pump":
                 pump_really_runs = False
-            if f in ("command", *REPLAYS):
+            if f in ("command", "forge", *REPLAYS):
                 pump_really_runs = True             # the attacker forces the pump ON
             if not power_ok:
                 pump_really_runs = False
             # Replay malware also fakes the motor feedback so it matches what the controller asked for.
-            feedback = self.cmd_out if f in REPLAYS else pump_really_runs
+            feedback = self.cmd_out if f in (*REPLAYS, "forge") else pump_really_runs
             inflow = cfg.pump_flow if pump_really_runs else 0.0
 
         new_device = 0
@@ -335,6 +348,11 @@ class TankSimulator:
         # --- the physical plant ---
         metered_outflow = cfg.valve_stuck_flow if f == "valve" else cfg.demand
         outflow = metered_outflow + (cfg.leak_flow if f == "leak" else 0.0)
+        if f == "forge" and self.twin is not None:
+            # The twin follows exactly the physics the detector expects from the forged feedback and
+            # valve position, one second later, so the mass balance always closes.
+            seen = (cfg.pump_flow * valve_pos / 100 if valve_pos is not None else cfg.pump_flow) if feedback else 0.0
+            self.twin = self._clamp(self.twin + seen - metered_outflow)
         self.level = max(0.0, min(100.0, self.level + inflow - outflow))
 
         # --- bookkeeping ---
