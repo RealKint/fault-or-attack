@@ -1,0 +1,98 @@
+
+Detection curve on the simple plant (on/off pump): 10 seeds x backup on/off, one-hour runs, random start time
+Scenario                       Size (%/s)    Right  Wrong call  Missed  Mean time
+---------------------------------------------------------------------------------
+Corrosion leak (constant)           0.002    0/20            0      20          -
+Corrosion leak (constant)           0.005    0/20            0      20          -
+Corrosion leak (constant)           0.010   20/20            0       0      225 s
+Corrosion leak (constant)           0.020   20/20            0       0      112 s
+Corrosion leak (constant)           0.050   20/20            0       0       45 s
+Corrosion leak (constant)           0.100   20/20            0       0       22 s
+Fuel theft                          0.005    0/20            0      20          -
+Fuel theft                          0.010   20/20            0       0      264 s
+Fuel theft                          0.020   20/20            0       0      135 s
+Fuel theft                          0.050   20/20            0       0       57 s
+Fuel theft                          0.100   20/20            0       0       29 s
+Fuel theft                          0.200   20/20            0       0       15 s
+Water getting into the tank         0.005   20/20            0       0      295 s
+Water getting into the tank         0.010   20/20            0       0      149 s
+Water getting into the tank         0.020   20/20            0       0       74 s
+Water getting into the tank         0.050   20/20            0       0       30 s
+Water getting into the tank         0.100   20/20            0       0       15 s
+---------------------------------------------------------------------------------
+Normal flow is 2%/s; a size of 0.01 is half a percent of that. Wrong call = a verdict before the event
+began, or the wrong kind (e.g. theft called a leak). Missed = nothing said in the whole hour.
+
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+
+Detection curve on the realistic plant (PID valve): 10 seeds x backup on/off, one-hour runs, random start time
+Scenario                       Size (%/s)    Right  Wrong call  Missed  Mean time
+---------------------------------------------------------------------------------
+Corrosion leak (constant)           0.002    0/20            0      20          -
+Corrosion leak (constant)           0.005    0/20            0      20          -
+Corrosion leak (constant)           0.010   20/20            0       0      225 s
+Corrosion leak (constant)           0.020   20/20            0       0      112 s
+Corrosion leak (constant)           0.050   20/20            0       0       45 s
+Corrosion leak (constant)           0.100   20/20            0       0       22 s
+Fuel theft                          0.005    0/20            0      20          -
+Fuel theft                          0.010   20/20            0       0      263 s
+Fuel theft                          0.020   20/20            0       0      144 s
+Fuel theft                          0.050   20/20            0       0       59 s
+Fuel theft                          0.100   20/20            0       0       30 s
+Fuel theft                          0.200   20/20            0       0       16 s
+Water getting into the tank         0.005   20/20            0       0      308 s
+Water getting into the tank         0.010   20/20            0       0      154 s
+Water getting into the tank         0.020   20/20            0       0       71 s
+Water getting into the tank         0.050   20/20            0       0       30 s
+Water getting into the tank         0.100   20/20            0       0       15 s
+---------------------------------------------------------------------------------
+Normal flow is 2%/s; a size of 0.01 is half a percent of that. Wrong call = a verdict before the event
+began, or the wrong kind (e.g. theft called a leak). Missed = nothing said in the whole hour.
+
+
+Mixed cases on the simple plant (on/off pump): 10 seeds x backup on/off, 30-minute runs
+Case                                    First answer right  Both found   Most common first answer
+-------------------------------------------------------------------------------------------------
+Cyber attack, then fuel theft                     20/20        20/20     ATTACK: False data injection
+Network flood, then corrosion leak                20/20        20/20     ATTACK: Denial of service
+Corrosion leak after sensor B died                20/20        20/20     FAULT: Slow leak into the bund
+Drone strike during planned work                  20/20        20/20     PHYSICAL: Physical damage
+Corrosion leak and water ingress                  20/20        20/20     FAULT: Water getting into the tank
+Theft under cover of a work order                  0/20         0/20     FAULT: Slow leak
+Theft by someone over the fence                    0/20         0/20     FAULT: Slow leak
+-------------------------------------------------------------------------------------------------
+
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+
+Mixed cases on the realistic plant (PID valve): 10 seeds x backup on/off, 30-minute runs
+Case                                    First answer right  Both found   Most common first answer
+-------------------------------------------------------------------------------------------------
+Cyber attack, then fuel theft                     20/20        20/20     ATTACK: False data injection
+Network flood, then corrosion leak                20/20        20/20     ATTACK: Denial of service
+Corrosion leak after sensor B died                20/20        20/20     FAULT: Slow leak into the bund
+Drone strike during planned work                  20/20        20/20     PHYSICAL: Physical damage
+Corrosion leak and water ingress                  20/20        20/20     FAULT: Water getting into the tank
+Theft under cover of a work order                  0/20         0/20     FAULT: Slow leak
+Theft by someone over the fence                    0/20         0/20     FAULT: Slow leak
+-------------------------------------------------------------------------------------------------
+
+
+False alarms on the simple plant (on/off pump): 120 healthy hours with rain, gas-detector tests, planned visits and the daily temperature swing
+Verdicts raised: 0 in 120 hours (0.0 per 100 hours)
+
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+
+False alarms on the realistic plant (PID valve): 120 healthy hours with rain, gas-detector tests, planned visits and the daily temperature swing
+Verdicts raised: 9 in 120 hours (7.5 per 100 hours)
+    6  ATTACK: Replay attack
+    3  FAULT: Sensor stuck
+  seed 501, hour 2.3: FAULT: Sensor stuck
+  seed 501, hour 5.1: ATTACK: Replay attack
+  seed 502, hour 11.6: ATTACK: Replay attack
+  seed 502, hour 23.4: FAULT: Sensor stuck
+  seed 502, hour 23.5: ATTACK: Replay attack
+  seed 503, hour 2.6: ATTACK: Replay attack
+  seed 504, hour 3.1: ATTACK: Replay attack
+  seed 505, hour 1.0: ATTACK: Replay attack
+  seed 505, hour 23.4: FAULT: Sensor stuck
+

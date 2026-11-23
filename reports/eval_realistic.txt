@@ -10,7 +10,7 @@ Pump failure            FAULT     120/120                   1.0 s   Pump failure
 Valve stuck open        FAULT     120/120                   0.0 s   Valve stuck open
 Leak                    FAULT      93/120                  17.0 s   Leak
 Power loss              FAULT     120/120                   0.0 s   Power loss
-False data injection    ATTACK    120/120                   8.1 s   False data injection
+False data injection    ATTACK    120/120                   8.2 s   False data injection
 Replay attack           ATTACK    102/120                  19.4 s   Replay attack
 Replay + fresh noise *  ATTACK    101/120                  22.1 s   Consistent forgery
 Stealthy spoof *        ATTACK    105/120                  23.6 s   Disguised attack

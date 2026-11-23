@@ -268,3 +268,10 @@ How this maps to the project:
 | Vendor risk | Supplier enters only through the jump host; vendor laptop and cellular modem shown as threats |
 
 Note for Brunei: the equivalent law is the **Cybersecurity Act (Cap 272)**, and OT is already covered in Section 10 of the CSB Code of Practice v2.0.
+
+### Physical side, tested harder (23 November 2026)
+The physical side was built in one day and tested on one size of each scenario. Four changes, all scored in `reports/physical_side.txt` and `reports/physical_deeper_tests.txt`:
+1. **One false alarm fixed.** The per-second "roughness" rule (forged data jumps around) fired once in a healthy simple-plant run (seed 6). Healthy noise can look rough by chance, but it can never jump further than four times the sensor noise; forged data does. The rule now also needs at least two such impossible jumps. Physical-side score: 400/400 (was 394/400); headline accuracy and the stress test unchanged.
+2. **Detection curve.** Each slow event at a range of sizes, starting at a random time in one-hour runs. The slow-balance limit was lowered from 0.03% to 0.01% of the tank per second after measuring that healthy five-minute averages never exceed 0.0036%. Now caught every time: corrosion leaks and theft from 0.01%/s, water ingress from 0.005%/s.
+3. **Healthy days.** 120 hours per plant with rain into the bund, gas-detector tests, planned visits and the daily temperature swing: no false alarms from the physical checks on either plant. The realistic plant raised 9 from the older replay and stuck-sensor rules (7.5 per 100 hours).
+4. **Two events at once.** The detector now reports a second, physical finding beside its main verdict, and two new hard-wired checks work without sensor A (the water-interface probe alone; the bund rising with the gas detector alarming, which rain cannot do). Five mixed cases were right in every run with both causes found. Two are limits, stated in the README: theft under cover of a work order, and theft by someone over the fence; both are called a slow leak.

@@ -34,5 +34,11 @@
   "replay_match": 10,
   "flat_runs_limit": 3,
   "link_limit": 0.3511958639663354
+ },
+ "77bb5e8cf0590304": {
+  "flatline_ticks": 10,
+  "replay_match": 10,
+  "flat_runs_limit": 3,
+  "link_limit": 0.3511958639663354
  }
 }
