@@ -20,8 +20,8 @@ The detector checks every reading against the tank's physics and the network, th
 
 | Test | Result |
 |---|---|
-| Simple plant, 1,440 runs | 99.5% right |
-| Realistic plant (PI valve) | 90.5% right |
+| Simple plant, 1,440 runs | 99.9% right |
+| Realistic plant (PI valve) | 93.1% right |
 | Normal running, 20 hours | 0 false alarms |
 | Real HAI testbed data, tank attacks | 7 of 8 caught |
 
@@ -89,7 +89,7 @@ python "FAULT OR ATTACK.py" --stress                # simple plant
 python "FAULT OR ATTACK.py" --stress --realistic    # realistic plant
 ```
 
-An adaptive attacker (or AI agent) on a trusted device forges sensor A, the motor feedback and the valve position so that every networked signal agrees with physics. Without help the detector loses to it. A new hard-wired witness check (backup sensor B and the high-level switch) catches it in every run before the tank overflows, when backup sensor B is fitted. Results and the risk review are in `reports/stress_consistent_forgery.txt` and the topology report.
+An adaptive attacker (or AI agent) on a trusted device forges sensor A, the motor feedback and the valve position so that every networked signal agrees with physics. Without help the detector loses to it. A hard-wired witness check (backup sensor B and the high-level switch, on by default) catches it in every run before the tank overflows, when backup sensor B is fitted. `--stress` shows the result with the check off and on. Results and the risk review are in `reports/stress_consistent_forgery.txt` and the topology report.
 
 ## Known limits
 

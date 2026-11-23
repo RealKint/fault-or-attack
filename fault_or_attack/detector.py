@@ -379,7 +379,7 @@ class FaultOrAttackDetector:
         agree with each other and with physics, so every networked check passes. A worn part cannot do
         that: it breaks the mass balance of sensor A itself. So if sensor A's mass balance closes neatly
         while a hard-wired witness shows water the forged feedback cannot explain, the networked story is
-        a lie. (Off unless witness_check is set; see --stress.)"""
+        a lie. (Switch it off with witness_check=False; --stress compares both.)"""
         cfg = self.cfg
         if not cfg.witness_check:
             return None

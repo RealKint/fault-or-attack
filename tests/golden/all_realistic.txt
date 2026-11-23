@@ -20,8 +20,8 @@ False data injection  ATTACK  off      100%   100%  ATTACK  False data injection
 False data injection  ATTACK  on        54%    50%  ATTACK  False data injection       14 s      yes
 Replay attack         ATTACK  off      100%   100%  ATTACK  Replay attack              9 s       yes
 Replay attack         ATTACK  on       100%   100%  ATTACK  Replay attack              9 s       yes
-Replay + fresh noise  ATTACK  off      100%   100%  ATTACK  Replay attack              105 s     yes
-Replay + fresh noise  ATTACK  on       100%   100%  UNKNOWN Unexplained alarm          8 s       NO
+Replay + fresh noise  ATTACK  off      100%   100%  ATTACK  Consistent forgery         38 s      yes
+Replay + fresh noise  ATTACK  on       100%   100%  ATTACK  Consistent forgery         10 s      yes
 Stealthy spoof        ATTACK  off      100%   100%  ATTACK  Disguised attack           23 s      yes
 Stealthy spoof        ATTACK  on        53%    50%  ATTACK  Disguised attack           23 s      yes
 Command injection     ATTACK  off      100%   100%  ATTACK  Command injection          0 s       yes
@@ -29,5 +29,5 @@ Command injection     ATTACK  on       100%   100%  ATTACK  Command injection   
 Denial of service     ATTACK  off       53%    50%  ATTACK  Denial of service          1 s       yes
 Denial of service     ATTACK  on        52%    50%  ATTACK  Denial of service          1 s       yes
 ---------------------------------------------------------------------------------------------------
-Fault-vs-attack calls correct: 23/24.   Healthy run: no false alarm
+Fault-vs-attack calls correct: 24/24.   Healthy run: no false alarm
 

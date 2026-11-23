@@ -158,8 +158,8 @@ class TestDetector(unittest.TestCase):
 
     def test_consistent_forgery_stress_test(self):
         """The adaptive attacker stays out of the headline scenarios. With backup sensor B and the
-        hard-wired witness check it is caught as an ATTACK before the tank overflows; without the check
-        the networked rules cannot call it an attack on the default run."""
+        hard-wired witness check (on by default) it is caught as an ATTACK before the tank overflows; with
+        the check switched off the networked rules cannot call it an attack on the default run."""
         from dataclasses import replace
         from fault_or_attack.scenarios import STRESS_ATTACKS
         self.assertNotIn("forge", SCENARIOS)
@@ -171,7 +171,9 @@ class TestDetector(unittest.TestCase):
                 spill = next(r.tick for r in records if r.level >= 99.5)
                 self.assertEqual((verdict.label, verdict.culprit), ("ATTACK", "Consistent forgery"))
                 self.assertLess(verdict.tick, spill)
-                off, _ = diagnose(TankSimulator(cfg, "forge", "permanent", True).run(), cfg)
+                self.assertTrue(cfg.witness_check)
+                off_cfg = replace(cfg, witness_check=False)
+                off, _ = diagnose(TankSimulator(off_cfg, "forge", "permanent", True).run(), off_cfg)
                 self.assertNotEqual(off.label if off else None, "ATTACK")
 
 

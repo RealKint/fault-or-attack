@@ -139,6 +139,7 @@ ATTACK_TECHNIQUES: dict[str, str] = {
     "Controller output forged": "T0831 Manipulation of Control, T0821 Modify Controller Tasking",
     "Denial of service": "T0814 Denial of Service, T0829 Loss of View",
     "Disguised attack": "T0856 Spoof Reporting Message (fault-like symptom + new network device)",
+    "Consistent forgery": "T0856 Spoof Reporting Message, T0832 Manipulation of View, T0831 Manipulation of Control",
 }
 
 
