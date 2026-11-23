@@ -103,6 +103,8 @@ Not every problem comes over the network. Hard-wired site signals (tamper switch
 
 The slow-balance check is the tank version of **computational pipeline monitoring (API RP 1130)**, and the `--physical` runs are the kind of simulated-leak testing **API RP 1175** asks leak detection programmes to do. The bypass verdict flags the safety-critical equipment deviations that the Petroleum Authority's **Directive No. 01/2021 (Asset Integrity Management)** requires operators to close out and report, and the detector's records can support a major-hazard **safety case** under SHENA's COMAH regulations. It is a safety net between inspections (API 510, 570 and 653), not a replacement for them.
 
+This matches a gap regulators are now naming. Australia's 2026 independent review of its critical-infrastructure law found the regime too cyber-heavy, saying it "neglects physical security, personnel security, and all-hazards supply chain". It also asked for physical threat vectors such as drones, and OT cybersecurity, to be examined. Fault or Attack answers FAULT, ATTACK or PHYSICAL in one system.
+
 ## Known limits
 
 An insider who fakes a slow, smooth drift from a device that is already trusted leaves no network trace, and physics alone cannot tell that from real sensor drift.

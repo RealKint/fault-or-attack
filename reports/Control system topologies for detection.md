@@ -251,3 +251,23 @@ Two regulator documents support the fault / attack / physical split this project
 - **Norway, Havtil**, *Safety and Responsibility: Understanding the Norwegian Regime* (2024). The regulator (the Petroleum Safety Authority until 2024) separates safety ("preventing accidents and mishaps") from security ("countering undesirable intentional incidents/deliberate attacks"). It supervises both: Petroleum Act section 9-3 requires security measures and emergency plans against deliberate attacks, and since 2023 Havtil enforces the Security Act for petroleum. It also requires barriers to be "monitored, measured and followed up" so they stay fully functional, and it receives 600–800 incident notifications a year on a 24-hour line.
 
 What this means for the design: the detector's FAULT (accident), ATTACK and PHYSICAL (deliberate, by network or on site) answers follow the split these regulators already use, and its heartbeat, bypass flag and hard-wired safety layer are barriers being monitored. The detector itself stays advisory, so it is unlikely to count as a safety-critical element, but it watches the ones that are.
+
+### Australia's critical-infrastructure review and US pipeline rules (23 November 2026)
+Two more regulator sources back the design:
+- **Australia, *Independent Review of the Security of Critical Infrastructure Act 2018*** (Dr Jill Slay AM, final report, 2 February 2026). It finds the regime needs major legislative change. It says the current cyber-heavy focus "neglects physical security, personnel security, and all-hazards supply chain". Recommendation 4 asks Home Affairs to examine AI, quantum, **physical threat vectors (including drones)** and **OT cybersecurity**. Stakeholders backed **"report once"** incident reporting and assurance based on **effectiveness** rather than self-attestation. Current reporting deadlines are 12 hours (significant impact) and 72 hours (relevant impact). Australia is already acting: according to White & Case (30 July 2026, https://www.whitecase.com/insight-alert/review-soci-act), stronger risk-management rules took effect on 10 June 2026 with 12–24 months to comply, including a power to direct on vendor risk and higher penalties; a second tranche of 21 measures went to consultation, closing 31 July 2026.
+- **US, TSA Security Directives Pipeline-2021-01 and -02.** SD-01 requires reporting to CISA within 24 hours (first 12) and a 24/7 cybersecurity coordinator. SD-02 requires three plans: an implementation plan (segmentation between IT and OT, multi-factor login, monitoring, patching that prioritises known-exploited flaws, and the ability to run manually), an incident response plan tested at least once a year with at least two objectives, and an assessment plan (architecture review every two years). The permanent rule proposed in November 2024 was not final as of June 2026.
+
+How this maps to the project:
+
+| Regulator point | Where Fault or Attack covers it |
+|---|---|
+| Too cyber-heavy; needs all-hazards | Separate FAULT, ATTACK and PHYSICAL verdicts |
+| Drones and physical threat vectors | Drone damage scenario, site-access fusion, tamper switches |
+| OT cybersecurity | Modbus and Purdue-zone design, hard-wired witness check |
+| Effectiveness, not self-attestation | Measured results: 1439/1440 and 1341/1440 headline, 60/60 under consistent forgery, 394/400 physical |
+| Report once | Playbook gives one reporting path per verdict |
+| Vendor risk | Supplier enters only through the jump host; vendor laptop and cellular modem shown as threats |
+| Ability to run manually (SD-02) | Hand-Off-Auto switch at the pump; isolate-or-run table in the playbook |
+| Yearly tested incident plan (SD-02) | Added to the playbook as a yearly exercise with two objectives |
+
+Note for Brunei: the equivalent law is the **Cybersecurity Act (Cap 272)**, and OT is already covered in Section 10 of the CSB Code of Practice v2.0.
