@@ -23,7 +23,7 @@ The detector checks every reading against the tank's physics and the network, th
 | Simple plant, 1,440 runs | 99.9% right |
 | Realistic plant (PI valve) | 93.1% right |
 | Normal running, 20 hours | 0 false alarms |
-| Real HAI testbed data, tank attacks | 7 of 8 caught |
+| Real HAI testbed data, tank attacks | 7 of 8 caught (test day 1: 3 of 3, day 2: 4 of 5); 7 of 24 attacks overall, as most target other parts of the plant; 4 false alarms in 42 hours |
 
 ![Accuracy dashboard](accuracy_dashboard.png)
 
