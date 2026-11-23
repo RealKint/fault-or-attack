@@ -17,7 +17,7 @@ UNCONFIRMED = "unconfirmed"   # _sensor_live(): waited long enough, still no pro
 @dataclass
 class Verdict:
     tick: int
-    label: str        # "FAULT", "ATTACK" or "UNKNOWN"
+    label: str        # "FAULT", "ATTACK", "PHYSICAL" (an on-site person or physical damage) or "UNKNOWN"
     culprit: str      # best guess at what is going on
     reason: str       # the evidence, in words an operator understands
     mitre: str = ""   # MITRE ATT&CK for ICS techniques (attacks only)
@@ -67,6 +67,9 @@ class FaultOrAttackDetector:
         self.rx_hat = cfg.start_level
         self.law_misses = 0
         self.track_misses = 0
+        # Physical side
+        self.last_unplanned = None        # last second someone came on site without a work order
+        self.b_seen = False               # has backup sensor B ever reported (so its loss means something)
 
     def observe(self, rec: Record) -> Verdict | None:
         cfg = self.cfg
@@ -78,6 +81,10 @@ class FaultOrAttackDetector:
             self.cusum_down = max(0.0, self.cusum_down - r - cfg.cusum_k)
         if rec.new_devices:
             self.last_new_device = rec.tick
+        if rec.door and not rec.work_order:
+            self.last_unplanned = rec.tick
+        if rec.sensor_b is not None:
+            self.b_seen = True
         if len(self.h) > 1 and rec.sensor is not None and rec.sensor == self.h[-2].sensor:
             self.flat_run += 1
         else:
@@ -90,11 +97,12 @@ class FaultOrAttackDetector:
         self._remember_window()
         if cfg.control == "pid":
             self._update_control_checks(rec)
-        for rule in (self._power, self._network, self._foreign_writes, self._pump_without_command,
+        for rule in (self._site_switches, self._physical_damage, self._power, self._network, self._foreign_writes, self._pump_without_command,
                      self._valve_tracking, self._control_law,
                      self._replay, self._probe_echo, self._ignores_valve, self._physics_violation,
                      self._hardwired_witness, self._pump_no_run,
-                     self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance):
+                     self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance,
+                     self._slow_balance):
             verdict = rule()
             if verdict:
                 return self._fuse(verdict)
@@ -112,6 +120,24 @@ class FaultOrAttackDetector:
         return Verdict(self.h[-1].tick, label, culprit, reason)
 
     def _fuse(self, v: Verdict) -> Verdict:
+        v = self._fuse_network(v)
+        return self._fuse_site(v)
+
+    def _fuse_site(self, v: Verdict) -> Verdict:
+        """Physical-side fusion: a symptom that starts soon after someone came on site WITHOUT a work order, with no
+        network evidence, has an on-site cause. Planned maintenance (a work order) does not count."""
+        if v.label not in ("FAULT", "ATTACK") or self.last_unplanned is None:
+            return v
+        since = v.tick - self.last_unplanned
+        network = (self.last_new_device is not None and v.tick - self.last_new_device <= self.cfg.access_window) \
+            or any(r.unknown_writes for r in self.h[-self.cfg.access_window:])
+        if since > self.cfg.access_window or network:
+            return v
+        return Verdict(v.tick, "PHYSICAL", "On-site tampering or theft",
+                       f"It looks like '{v.culprit.lower()}', but it began {since} s after someone came on site with no "
+                       "work order, and nothing unusual happened on the network. Check the spot and the CCTV.")
+
+    def _fuse_network(self, v: Verdict) -> Verdict:
         """Cyber-physical fusion: a fault-like symptom that starts soon after a never-seen-before
         device joins the control network is treated as an attack in disguise."""
         if v.label != "FAULT" or self.last_new_device is None:
@@ -265,6 +291,78 @@ class FaultOrAttackDetector:
         return median(abs(b - a) for a, b in zip(values, values[1:]))
 
     # --- rules -------------------------------------------------------------
+    def _site_switches(self):
+        """Hard-wired switches people operate on site: a tamper switch or the safety bypass, with no work order."""
+        r = self.h[-1]
+        if r.work_order:
+            return None
+        if r.tamper:
+            return self._v("PHYSICAL", "Instrument tampering",
+                           "A tamper switch on an instrument cabinet opened with no work order. Someone on site is "
+                           "touching the instruments; no reading from that cabinet can be trusted until it is checked.")
+        if r.bypass:
+            return self._v("PHYSICAL", "Safety bypass without a work order",
+                           "The overfill trip is switched to bypass and no maintenance is planned. At Buncefield an "
+                           "independent high-level switch was left inoperative; check it now.")
+
+    def _physical_damage(self):
+        """Several independent hard-wired signs at once: physical damage (a drone, an explosion, a vehicle), not wear."""
+        cfg, h = self.cfg, self.h
+        n = cfg.damage_window
+        if len(h) <= n:
+            return None
+        old, r = h[-n - 1], h[-1]
+        if not r.power_ok:
+            return None                       # a power cut darkens sensors too; that is the power rule's job
+        signs = []
+        if self.b_seen and old.sensor_b is not None and r.sensor_b is None:
+            signs.append("backup sensor B went dead")
+        if r.gas_alarm and not old.gas_alarm:
+            signs.append("the gas detector alarmed")
+        if r.bund - old.bund > 2.0 * n:       # a hole, not a leak: ordinary leaks fill the bund far slower
+            signs.append(f"the bund filled by {r.bund - old.bund:.0f}% in {n} s")
+        if len(signs) >= 2:
+            return self._v("PHYSICAL", "Physical damage",
+                           "Within a few seconds " + ", ".join(signs) + ". Worn parts fail one at a time; several "
+                           "independent signs at once mean physical damage. Keep people clear and call site security.")
+
+    def _slow_balance(self):
+        """Slow leaks and gains, such as corrosion or water ingress, far too small for the per-second checks.
+
+        Over minutes the sensor's noise cancels out of the summed water balance (each second's noise is undone by the
+        next), so a steady loss of a few hundredths of a percent per second stands out."""
+        cfg = self.cfg
+        w = cfg.slow_window
+        if len(self.res) < w:
+            return None
+        res = [x for x in self.res[-w:] if x is not None]
+        if len(res) < 0.9 * w:
+            return None
+        rate = mean(res)
+        r, old = self.h[-1], self.h[-w]
+        if r.sensor_b is not None and r.sensor is not None and abs(r.sensor_b - r.sensor) > 3:
+            return None                       # the sensors disagree: the drift and witness rules decide
+        if rate < -cfg.slow_limit:
+            loss = f"{-rate:.2f}%/s of product goes missing that no meter accounts for"
+            if r.bund - old.bund > 0.25 * w * cfg.slow_limit:
+                return self._v("FAULT", "Slow leak into the bund",
+                               f"{loss.capitalize()}, and the bund around the tank is filling. A slow, real leak, "
+                               "typically corrosion: isolate the section and send a technician.")
+            if self.last_unplanned is not None and r.tick - self.last_unplanned <= cfg.access_window + w:
+                return self._v("PHYSICAL", "Product theft",
+                               f"{loss.capitalize()} outside the bund, starting soon after someone came on site with no "
+                               "work order. A leak that size would collect in the bund; this looks like a tap.")
+            return self._v("FAULT", "Slow leak", f"{loss.capitalize()}, steadily. A slow leak outside the bund, "
+                           "typically corrosion" + ("" if r.sensor_b is not None else ", or a slowly drifting sensor") + ".")
+        if rate > cfg.slow_limit:
+            if r.interface is not None and old.interface is not None and r.interface - old.interface > 0.5 * w * cfg.slow_limit:
+                return self._v("FAULT", "Water getting into the tank",
+                               f"The level gains {rate:.2f}%/s that no inflow explains, and the water-interface probe "
+                               f"shows the water layer up {r.interface - old.interface:.1f}%. Check the roof seal and drain "
+                               "the water before it corrodes the tank floor.")
+            return self._v("UNKNOWN", "Unexplained slow gain",
+                           f"The level gains {rate:.2f}%/s that no inflow explains. Check for an unmetered inflow.")
+
     def _power(self):
         if not self.h[-1].power_ok:
             return self._v("FAULT", "Power loss",

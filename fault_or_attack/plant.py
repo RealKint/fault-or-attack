@@ -69,6 +69,14 @@ class Record:
     tone: str                   # plant truth: "ok", "warn" or "danger", from the REAL level (hidden from the detector)
     status: str
     screen_alarm: str | None    # what the operator's screen shows, from the reading it trusts (None = no alarm)
+    # Physical side: hard-wired site signals the detector may read (all quiet in the headline scenarios).
+    tamper: bool = False        # a tamper switch on an instrument cabinet or sensor B's housing is open
+    door: bool = False          # a gate, door or badge-access event happened this second
+    work_order: bool = False    # planned maintenance is open, so people on site are expected
+    bypass: bool = False        # the overfill trip is switched to bypass
+    gas_alarm: bool = False     # the hydrocarbon gas detector by the tank is alarming
+    bund: float = 0.0           # liquid collected in the bund (spill wall) around the tank, % of tank volume
+    interface: float | None = None  # hard-wired water-interface probe: height of the water layer, % of tank
 
 
 def screen_alarm(trusted: float, power_ok: bool, mismatch: bool, a_lost: bool, backup: bool,
@@ -126,6 +134,7 @@ class TankSimulator:
         self.net_rng = random.Random(seed + 7919)       # network traffic and message loss
         self.attack_rng = random.Random(seed + 104729)  # the attacker's choices
         self.probe_rng = random.Random(seed + 31337)    # the defender's secret probe schedule
+        self.site_rng = random.Random(seed + 4243)      # physical side: the water-interface probe's noise
 
         self.tick = 0
         self.level = self.cfg.start_level
@@ -144,6 +153,8 @@ class TankSimulator:
         self.recording: deque[tuple[float, bool]] = deque(maxlen=self.cfg.replay_length)
         self.replay_i: int | None = None        # replay: position in the recording
         self.twin: float | None = None          # consistent forgery: the attacker's fake "healthy" tank level
+        self.bund = 0.0                         # spill collected in the bund around the tank
+        self.water = 2.0                        # water layer at the bottom of the tank, % of tank height
         self.twin_noise = 0.0                   # consistent forgery: the attacker's own imitation of sensor noise
 
         # Realism: correlated sensor noise state, and the PID valve plant.
@@ -209,7 +220,7 @@ class TankSimulator:
         else:
             self.stealth_offset = 0.0
 
-        if f == "forge":
+        if f in ("forge", "tamper_b"):
             # Adaptive attacker: report a simulated healthy tank (the twin) plus noise that imitates
             # the real sensor's, so the mass balance, roughness and replay checks all see a healthy plant.
             if self.twin is None:
@@ -257,7 +268,7 @@ class TankSimulator:
         else:
             self.frozen = None
 
-        # --- optional backup sensor B (hard-wired, never faulty or attacked in this model) ---
+        # --- optional backup sensor B (hard-wired; only an insider on site or a drone can reach it) ---
         reading_b_raw = self._quantize(self._clamp(self.level + self._noise("b")))
 
         # --- the control network between sensor A and the controller ---
@@ -269,7 +280,10 @@ class TankSimulator:
         else:
             packets = (cfg.flood_packets if f == "dos" else cfg.normal_packets) + self.net_rng.randint(-2, 2)
         received = reading_a if (power_ok and not lost) else None
-        reading_b = reading_b_raw if (self.backup_sensor and power_ok) else None
+        if f == "tamper_b" and self.twin is not None:
+            # The insider rewired sensor B to follow the attacker's fake tank too.
+            reading_b_raw = self._quantize(self._clamp(self.twin + self._noise("b")))
+        reading_b = reading_b_raw if (self.backup_sensor and power_ok and f != "drone") else None
 
         # --- which reading does the controller trust? ---
         trusted, mismatch, a_lost = choose_reading(received, reading_b, self.last_rx, cfg)
@@ -301,11 +315,11 @@ class TankSimulator:
                     self.last_probe_end = self.tick
             valve_cmd = 0.0 if (probing or not power_ok) else self.u
             self.cmd_out = power_ok
-            forced = f in ("command", "forge", *REPLAYS)   # the attacker forces the valve wide open
+            forced = f in ("command", "forge", "tamper_b", "hand_valve", *REPLAYS)   # someone forces the valve wide open
             self.valve_real += cfg.valve_lag * ((100.0 if forced else valve_cmd) - self.valve_real)
             self.valve_model += cfg.valve_lag * (valve_cmd - self.valve_model)
             # Replay malware reports where the valve SHOULD be, hiding that it is wide open.
-            valve_pos = self.valve_model if f in (*REPLAYS, "forge") else self.valve_real
+            valve_pos = self.valve_model if f in (*REPLAYS, "forge", "tamper_b") else self.valve_real
             pump_really_runs = power_ok and f != "pump"
             feedback = pump_really_runs
             inflow = cfg.pump_flow * self.valve_real / 100 if pump_really_runs else 0.0
@@ -333,12 +347,12 @@ class TankSimulator:
             pump_really_runs = self.cmd_out
             if f == "pump":
                 pump_really_runs = False
-            if f in ("command", "forge", *REPLAYS):
-                pump_really_runs = True             # the attacker forces the pump ON
+            if f in ("command", "forge", "tamper_b", "hand_valve", *REPLAYS):
+                pump_really_runs = True             # the attacker (or someone at the pump) forces it ON
             if not power_ok:
                 pump_really_runs = False
             # Replay malware also fakes the motor feedback so it matches what the controller asked for.
-            feedback = self.cmd_out if f in (*REPLAYS, "forge") else pump_really_runs
+            feedback = self.cmd_out if f in (*REPLAYS, "forge", "tamper_b") else pump_really_runs
             inflow = cfg.pump_flow if pump_really_runs else 0.0
 
         new_device = 0
@@ -348,7 +362,22 @@ class TankSimulator:
         # --- the physical plant ---
         metered_outflow = cfg.valve_stuck_flow if f == "valve" else cfg.demand
         outflow = metered_outflow + (cfg.leak_flow if f == "leak" else 0.0)
-        if f == "forge" and self.twin is not None:
+        # Physical side: losses the outflow meter never sees, and where they go.
+        in_bund = 0.0
+        if f == "corrosion":
+            in_bund = min(cfg.corrosion_max, cfg.corrosion_start + cfg.corrosion_growth * (self.tick - cfg.inject_at))
+        elif f == "drone":
+            in_bund = cfg.drone_leak
+        elif f == "maint_leak":
+            in_bund = cfg.leak_flow
+        lost = in_bund + (cfg.theft_flow if f == "theft" else 0.0)     # a theft tap sits outside the bund
+        lost = min(lost, self.level)                                   # an empty tank cannot lose more
+        outflow += lost
+        self.bund += min(in_bund, lost)                                # only a leak inside the bund collects there
+        if f == "water":
+            self.level = min(100.0, self.level + cfg.water_rate)        # rainwater adds to the total level ...
+            self.water += cfg.water_rate                                # ... and settles under the product
+        if f in ("forge", "tamper_b") and self.twin is not None:
             # The twin follows exactly the physics the detector expects from the forged feedback and
             # valve position, one second later, so the mass balance always closes.
             seen = (cfg.pump_flow * valve_pos / 100 if valve_pos is not None else cfg.pump_flow) if feedback else 0.0
@@ -365,6 +394,7 @@ class TankSimulator:
         duty = sum(self.duty_window) / len(self.duty_window)
         run_duty = sum(self.run_window) / len(self.run_window)
         tone, status = classify(self.level, power_ok, mismatch, cfg, a_lost, self.backup_sensor)
+        site = self._site_events()
         rec = Record(
             tick=self.tick, level=self.level, sensor=received, sensor_b=reading_b,
             pump_cmd=self.cmd_out, pump_flow=pump_really_runs, pump_feedback=feedback,
@@ -376,9 +406,26 @@ class TankSimulator:
             switch_high=power_ok and self.level >= 99.5, switch_low=power_ok and self.level <= 0.5,
             duty=duty, run_duty=run_duty, fault_active=active, tone=tone, status=status,
             screen_alarm=screen_alarm(trusted, power_ok, mismatch, a_lost, self.backup_sensor, cfg),
+            tamper=site["tamper"], door=site["door"], work_order=site["work_order"], bypass=site["bypass"],
+            gas_alarm=power_ok and (self.bund >= cfg.gas_threshold or f == "drone"),
+            bund=round(self.bund, 3),
+            interface=self._quantize(max(0.0, self.water + 0.05 * (self.site_rng.random() - 0.5))) if power_ok else None,
         )
         self.tick += 1
         return rec
+
+    def _site_events(self) -> dict[str, bool]:
+        """Hard-wired site signals for the physical scenarios: when people arrive, whether the visit is planned,
+        and what they switch. Healthy runs and the headline scenarios have none of them."""
+        f, t, at = self.fault, self.tick, self.cfg.inject_at
+        planned = f in ("maint_leak", "bypass_planned")
+        return {
+            # Unplanned visitors arrive shortly before they act; the maintenance crew opens a work order first.
+            "door": (f in ("theft", "hand_valve") and t == at - 30) or (planned and t == at - 60),
+            "work_order": planned and t >= at - 60,
+            "tamper": f == "tamper_b" and at <= t < at + 5,          # the insider opens sensor B's cabinet as it starts
+            "bypass": f in ("bypass", "bypass_planned") and t >= at,
+        }
 
     def run(self) -> list[Record]:
         cfg = self.cfg

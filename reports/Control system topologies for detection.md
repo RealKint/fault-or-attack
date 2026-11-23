@@ -233,3 +233,12 @@ After reviewing the day's material (Dragos and SANS 2026 reports, IBM Cost of a 
 | 10 (new) | **Escalation chain + site security**: incident team (CIRT), BruCERT and the Commissioner (Act s16), callback on a known channel; physical damage to site security | 82% of organisations have no rule for when an odd reading becomes a cyber investigation (Dragos). |
 
 BruCERT's box now also names the Commissioner of Cybersecurity. Removable-media kiosks and a trusted local time source were judged useful but left off the map for space; they are recorded here as notes (NIST SP 1334; Code of Practice 6.1.4(a)).
+
+### The physical side (23 November 2026)
+The detector was cyber-focused. Three physical gaps from the risk review are now built in the simulator and scored separately (`--physical`, results in `reports/physical_side.txt`):
+- **On-site tampering.** Tamper switches (on instrument cabinets and sensor B's housing) and the bypass flag, with no work order, give **PHYSICAL**. This closes the hole where an insider rewires sensor B to defeat the hard-wired witness check.
+- **Site-access fusion.** Gate, door and badge events are fused like network evidence: a symptom soon after unplanned access, with nothing odd on the network, is an on-site cause (a valve forced by hand, a theft tap). Planned work under a work order stays a FAULT.
+- **Physical damage.** Several independent hard-wired signs within five seconds (sensor B dead, gas alarm, bund filling fast) mean damage such as a drone strike, not wear.
+- **Slow faults.** A test showed leaks under about 0.5% of the tank per second (a quarter of normal flow) were never detected, because the per-second checks ignore errors that small. A five-minute slow-balance check, where sensor noise cancels out, now catches a corrosion leak starting at 0.02%/s in about three minutes, separates it from theft (bund filling versus bund dry after unplanned access), and catches water ingress with the water-interface probe.
+
+Results over 10 seeds, backup on and off, 30-minute runs: 174/180 right on the simple plant, 180/180 on the realistic plant. All six misses are one older false call (the per-second roughness rule, seed 6). A wider check of 25 healthy hours per plant found one such false call on the simple plant and two (replay rule) on the realistic plant; none came from the new physical or slow checks. Drone and perimeter radar is drawn on the map as partner technology, not built.

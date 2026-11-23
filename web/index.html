@@ -2180,13 +2180,14 @@ Reported to the police: not yet`)}</pre>
       13: ["Outside inflow / shared manifold", "Low → medium", "Someone else's pipeline changes the flow without warning, as at Buncefield. A test that the detector does not cry wolf."],
       14: ["Pressure-timing mini-game", "Medium", "Pressure sensors at both ends of a pipe time the leak's pressure wave, so you find where in the pipe it is, not just which pipe."],
       15: ["Remote station over radio", "Medium", "Stale readings with gaps point to a link fault; fresh readings that contradict local sensors point to an attack."],
+      17: ["Physical side: tamper switches, site access, PHYSICAL verdict, slow leaks", "Low", "Built in the simulator (python \"FAULT OR ATTACK.py\" --physical). Hard-wired tamper switches, gate and badge events with work orders, the bypass flag, a gas detector, the bund level and a water-interface probe feed the detector. It now answers PHYSICAL (send site security) for tampering, theft and drone damage, and catches corrosion leaks and water ingress far too small for the per-second checks. 354 of 360 test runs right; the 6 misses were one existing false alarm, not the new checks."],
       16: ["Meter-spoof rule in the pipe game", "Low", "A faked meter makes one pipe look like it loses water and the next like it gains; a real leak only loses."],
     };
-    const DONE = { 2: "partly built", 16: "built" };
+    const DONE = { 2: "partly built", 16: "built", 17: "built" };
     const BRANCHES = [
       ["Zones", "Say where an attack came in", [3, 2, 11, 15], "b0"],
       ["More tanks", "A pattern of clues, not one number", [12, 13, 16, 14], "b1"],
-      ["Independent witnesses", "Checks a network attacker cannot reach", [5, 8, 7, 6], "b2"],
+      ["Independent witnesses", "Checks a network attacker cannot reach", [5, 8, 7, 6, 17], "b2"],
       ["Real stories, Brunei rules", "Real plant stories, and checks Brunei's Code of Practice asks for", [1, 4, 9, 10], "b3"],
     ];
     // zones: [x, y, w, h, label, extra class]
@@ -2199,7 +2200,7 @@ Reported to the police: not yet`)}</pre>
       [752, 412, 240, 488, "Safety layer · own wiring · SL4", "safe"],
       [8, 906, 984, 84, "Response and recovery · people and offline copies"]];
     // small notes written on the map: [x, y, text]
-    const NOTES = [[30, 385, "Modbus: no authentication"], [770, 862, "status-only links out"]];
+    const NOTES = [[30, 385, "Modbus: no authentication"], [770, 888, "status-only links out"], [24, 784, "Site signals, hard-wired to the detector · drone and perimeter radar: partner technology, not built"]];
     // nodes: id, x, y, w, h, label, sub, ups (upgrade numbers), kind ("" today, "added", "threat")
     const N = [
       ["att", 24, 34, 190, 70, "Attacker", "often far away, online", [], "threat"],
@@ -2247,6 +2248,10 @@ Reported to the police: not yet`)}</pre>
       ["site", 270, 936, 200, 44, "Site security", "", [10]],
       ["bak", 486, 936, 250, 44, "Program backups (signed)", "", [6]],
       ["hb", 752, 936, 230, 44, "Detector heartbeat", "", [7]],
+      ["tsw", 24, 792, 190, 44, "Tamper switches", "", [17], "added"],
+      ["acc", 226, 792, 232, 44, "Door / badge + work orders", "", [17], "added"],
+      ["gas", 470, 792, 250, 44, "Gas detector + bund level", "", [17], "added"],
+      ["ifc", 762, 826, 220, 40, "Water-interface probe", "", [17], "added"],
     ];
     // links: points, kind, ups, flags ("today" = only in today's flat network)
     const L = [
@@ -2413,12 +2418,16 @@ Reported to the police: not yet`)}</pre>
       mcur: ["A current sensor on the pump motor's power cable, wired straight to the control room.", "Tells how hard the pump is really working without trusting any networked signal. It makes the virtual level a true independent witness, so a consistent forgery of every networked signal can be outvoted."],
       hoa: ["A hard-wired Hand-Off-Auto switch beside the pump.", "Lets operators run the pump by hand when the control network cannot be trusted. Colonial Pipeline kept some lines going manually; the US Department of Energy's cyber-informed engineering examples reinstated exactly these switches."],
       cirt: ["The cybersecurity incident response team named in the site's response plan.", "Takes over from the operator on an ATTACK verdict, keeps the evidence, and reports to BruCERT and, for a critical site, the Commissioner of Cybersecurity (Act s16; Code of Practice 7.1.1). Urgent requests are confirmed by a callback on a known channel, not by the call or email that made them."],
-      site: ["The people who look after fences, gates, cameras and guards.", "Physical damage from drones or sabotage looks like a broken part, so today the detector would call it a FAULT. Sudden, large failures in several places at once should go to site security as well as to maintenance."],
+      site: ["The people who look after fences, gates, cameras and guards.", "Where PHYSICAL verdicts go: tampering, theft, a safety trip bypassed without a work order, and physical damage such as a drone strike. The detector now gives that answer (upgrade 17); the planned part is the escalation chain itself."],
       bak: ["Known-good, signed copies of the controller's program and settings, kept offline.", "Lets the team check whether the running program has been changed, and restore it quickly if it has. Brunei's Code of Practice asks for program integrity checks (10.3.1, 10.3.2); NIST SP 1339 says to test backups, not just keep them."],
+      tsw: ["Switches that open when an instrument cabinet, or backup sensor B's housing, is opened. Wired straight to the detector.", "An insider who rewires sensor B can defeat the hard-wired witness check. The tamper switch gives them away: opened with no work order means PHYSICAL, instrument tampering. In the test runs it caught the insider in every run, at the moment the cabinet opened."],
+      acc: ["Gate, door and badge events, plus the site's maintenance work orders.", "Used like the network evidence: a fault that starts soon after someone came on site WITHOUT a work order, with nothing odd on the network, has an on-site cause (a valve forced by hand, a theft tap). With a work order, a fault stays a FAULT."],
+      gas: ["A hydrocarbon gas detector by the tank, and a level gauge in the bund (the spill wall around the tank).", "Proves a real spill however the readings are faked. A slow loss that fills the bund is a leak (often corrosion); a slow loss with the bund dry, after unplanned access, is theft. Several signs at once (sensor B dead, gas alarm, bund filling fast) mean physical damage, such as a drone strike."],
+      ifc: ["A probe that measures the water layer at the bottom of the tank, under the product (oil, water and vapour separate by weight).", "Water getting in through a roof seal shows as an unexplained gain in level with the water layer rising: a FAULT to fix before the water corrodes the tank floor (API 653 inspections check for this)."],
       hb: ["A regular 'I am alive' signal from the detector to the operator's screen.", "If the detector is switched off, crashes or is tampered with, the heartbeat stops and an alarm says so. Today nothing would notice a silent detector."],
       vend: ["Equipment makers and service companies with remote or on-site access to the plant.", "A common way in. In November 2026 attackers raised freezer temperatures at three French blood bank sites through a refrigeration supplier's component; a separate monitoring system caught it. On this map vendors come in only through the jump host, limited, logged and time-boxed."],
       modem: ["A mobile-data modem or remote-access box that connects plant equipment straight to the outside world.", "It goes around the data diode, so the diode no longer protects anything. Dragos and CISA flagged cellular gateways as a blind spot in 2026. Find every one, and route remote access through a monitored, approved path."],
-      drone: ["A drone strike, explosive or other physical sabotage on the tanks or pipes.", "Drone swarms hit refineries repeatedly in 2026. Physical damage looks like a broken part, so today the detector would call it a FAULT. A planned 'physical damage: check site security' answer would cover sudden, large failures in several places at once."],
+      drone: ["A drone strike, explosive or other physical sabotage on the tanks or pipes.", "Drone swarms hit refineries repeatedly in 2026. Physical damage can look like a broken part, so the detector now looks for several independent hard-wired signs at once (sensor B dead, gas alarm, bund filling fast) and answers PHYSICAL: check site security. It did so in every test run, within 2 seconds."],
       lvl: ["API 2350's three tank levels: Critical High (overflow), High-High (stop filling now) and Maximum Working (normal top).", "For a Category 3 tank the operator has 15 minutes between High-High and Critical High. Showing the time left when the verdict arrives proves the detector is fast enough to matter."],
     };
     const NODE = Object.fromEntries(N.map(n => [n[0], n]));
@@ -2453,7 +2462,7 @@ Reported to the police: not yet`)}</pre>
     };
     const ICON_OF = { att: "person", it: "screen", bru: "mail", fw: "wall", n2: "eye", hmi: "screen", cfg: "gear", ctl: "chip", det: "shield",
       vl: "calc", vote: "vote", n1: "eye", pump: "pump", inf: "pipe", bun: "flame", t1: "tank", sa: "sensor", sw: "list", t2: "tank",
-      mtr: "meter", pip: "pipe", spf: "meter", prs: "meter", rtu: "radio", sb: "sensor", sws: "toggle", pwr: "bolt", sis: "shield", byp: "key", log: "list", sup: "eye", hlth: "chip", rsp: "meter", lvl: "tank", ews: "screen", jump: "key", mcur: "meter", hoa: "toggle", cirt: "person", site: "shield", bak: "list", hb: "bolt", vend: "person", modem: "radio", drone: "flame" };
+      mtr: "meter", pip: "pipe", spf: "meter", prs: "meter", rtu: "radio", sb: "sensor", sws: "toggle", pwr: "bolt", sis: "shield", byp: "key", log: "list", sup: "eye", hlth: "chip", rsp: "meter", lvl: "tank", ews: "screen", jump: "key", mcur: "meter", hoa: "toggle", cirt: "person", site: "shield", bak: "list", hb: "bolt", tsw: "key", acc: "person", gas: "flame", ifc: "meter", vend: "person", modem: "radio", drone: "flame" };
     const icon = (id) => `<svg class="pop-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[ICON_OF[id]] || IC.gear}</svg>`;
     // Clicking a box opens a mini box right next to it: what it is and how it helps.
     const wrap = svg.parentElement;   // the map's scrolling frame, which holds the mini box too

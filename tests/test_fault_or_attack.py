@@ -176,6 +176,23 @@ class TestDetector(unittest.TestCase):
                 off, _ = diagnose(TankSimulator(off_cfg, "forge", "permanent", True).run(), off_cfg)
                 self.assertNotEqual(off.label if off else None, "ATTACK")
 
+    def test_physical_side_default_runs(self):
+        """Every physical-side scenario is called right on a default 30-minute run, on both plants: slow faults are
+        FAULT, on-site causes are PHYSICAL, and planned work stays silent."""
+        from dataclasses import replace
+        from fault_or_attack.scenarios import PHYSICAL_SCENARIOS
+        for plant, cfg in (("simple", Config()), ("realistic", learn_from_normal(realistic(Config())))):
+            c = replace(cfg, ticks=1800, inject_at=400)
+            for key, info in PHYSICAL_SCENARIOS.items():
+                with self.subTest(plant=plant, scenario=key):
+                    verdict, _ = diagnose(TankSimulator(c, key, "permanent", True).run(), c)
+                    if info.kind == "NONE":
+                        self.assertIsNone(verdict)
+                    else:
+                        self.assertIsNotNone(verdict)
+                        self.assertEqual(verdict.label, info.kind, verdict.culprit)
+                        self.assertGreaterEqual(verdict.tick, c.inject_at)
+
 
 class TestSettings(unittest.TestCase):
     def test_defaults_and_realistic_are_valid(self):

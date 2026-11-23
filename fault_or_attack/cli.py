@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 
 from .config import PROJECT_DIR, Config, realistic
-from .evaluation import print_eval, print_single, print_stress, print_table
+from .evaluation import print_eval, print_physical, print_single, print_stress, print_table
 from .hai_validation import HaiDataError, hai_main
 from .learning import learn_from_normal
 from .live_demo import animate_live
@@ -37,6 +37,10 @@ def main(argv: list[str] | None = None) -> None:
                    help="stress test against an adaptive attacker who forges every networked signal consistently, "
                         "with the hard-wired witness check off and on (scored apart from the headline accuracy; "
                         "--eval SEEDS sets the seeds, default 20; --realistic for the PID plant)")
+    p.add_argument("--physical", action="store_true",
+                   help="score the physical side: corrosion, water ingress, theft, valve forced by hand, safety bypass, "
+                        "insider tampering, drone strike, planned work (--eval SEEDS sets the seeds, default 10; "
+                        "--realistic for the PID plant)")
     p.add_argument("--dashboard", action="store_true",
                    help="score both plants and draw a one-page accuracy dashboard "
                         "(saved to accuracy_dashboard.png; --save to choose, --plot to open a window)")
@@ -139,6 +143,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.stress:
         print_stress(cfg, args.eval or 20)
+        return
+
+    if args.physical:
+        print_physical(cfg, args.eval or 10)
         return
 
     if args.eval is not None:

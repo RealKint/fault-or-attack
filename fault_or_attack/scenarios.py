@@ -117,7 +117,71 @@ STRESS_ATTACKS: dict[str, ScenarioInfo] = {
 }
 
 
-KNOWN_SCENARIOS: dict[str, ScenarioInfo] = {**SCENARIOS, **STRESS_ATTACKS}
+# Physical side: slow faults, on-site tampering and physical damage. Scored separately (--physical) on long
+# runs, because the slow checks need minutes of data. kind "PHYSICAL" = an on-site human or physical cause:
+# send site security as well as (or instead of) a technician or the cybersecurity team. kind "NONE" = the
+# detector must stay silent (planned work).
+PHYSICAL_SCENARIOS: dict[str, ScenarioInfo] = {
+    "corrosion": ScenarioInfo(
+        "Corrosion leak", "Equipment fault (slow)",
+        "A pipe in the bund rusts through: a pinhole leak that starts tiny and slowly grows. Far too small for the "
+        "per-second checks at first.",
+        "The slow-leak check averages the water balance over minutes, where sensor noise cancels out; the bund "
+        "level rising confirms a real spill.",
+    ),
+    "water": ScenarioInfo(
+        "Water getting into the tank", "Process fault (slow)",
+        "Rainwater seeps in through a roof seal and settles at the bottom of the tank, under the product.",
+        "The level gains water nothing explains, and the hard-wired water-interface probe shows the water layer rising.",
+    ),
+    "maint_leak": ScenarioInfo(
+        "Leak during planned maintenance", "Equipment fault",
+        "A real leak starts while technicians are on site under a work order.",
+        "The access is planned, so the detector must still say FAULT, not blame the visitors.",
+    ),
+    "theft": ScenarioInfo(
+        "Fuel theft", "Physical attack (on-site)",
+        "Someone enters the site without a work order and taps the line outside the bund, drawing off a small, steady flow.",
+        "A slow loss that starts right after unplanned access, with the bund dry: theft, not corrosion.",
+        kind="PHYSICAL",
+    ),
+    "hand_valve": ScenarioInfo(
+        "Valve forced by hand", "Physical attack (on-site)",
+        "An intruder walks in and forces the supply open by hand. Nothing happens on the network.",
+        "The pump or valve moves on its own, right after unplanned access, with no network evidence: on-site tampering.",
+        kind="PHYSICAL",
+    ),
+    "bypass": ScenarioInfo(
+        "Safety trip bypassed", "Physical attack (on-site)",
+        "The overfill trip is switched to bypass with no work order, as at Buncefield, where an independent switch "
+        "was left inoperative.",
+        "The hard-wired bypass flag is on while no maintenance is planned.",
+        kind="PHYSICAL",
+    ),
+    "tamper_b": ScenarioInfo(
+        "Insider tampers with sensor B", "Physical attack (insider)",
+        "The consistent-forgery attacker also has someone on site who rewires backup sensor B to agree with the lie, "
+        "defeating the hard-wired witness check.",
+        "The tamper switch on sensor B's housing opens with no work order.",
+        kind="PHYSICAL",
+    ),
+    "drone": ScenarioInfo(
+        "Drone strike", "Physical attack (damage)",
+        "A drone holes the tank: a large leak into the bund, sensor B destroyed, vapour everywhere.",
+        "Several independent hard-wired signs at once (sensor B lost, gas alarm, bund filling fast): physical damage, "
+        "not wear.",
+        kind="PHYSICAL",
+    ),
+    "bypass_planned": ScenarioInfo(
+        "Planned bypass for testing", "Normal work",
+        "The overfill trip is bypassed for its yearly proof test, under a work order.",
+        "Planned work: the detector must stay silent.",
+        kind="NONE",
+    ),
+}
+
+
+KNOWN_SCENARIOS: dict[str, ScenarioInfo] = {**SCENARIOS, **STRESS_ATTACKS, **PHYSICAL_SCENARIOS}
 
 
 SMART_ATTACKS = ("smart_replay", "stealth")    # added after the detector was first tuned
@@ -152,6 +216,9 @@ RESPONSES: dict[str, str] = {
               "(hotline 245 8001, cert@brucert.org.bn); owners of critical information infrastructure must also "
               "notify the Commissioner of Cybersecurity.",
     "UNKNOWN": "Escalate: have an operator check the real level in the field before deciding.",
+    "PHYSICAL": "Make the process safe and send site security with a technician to the spot; keep CCTV, door and badge "
+                "logs. Theft or sabotage: call the police. A safety or spill incident: report to SHENA and the Petroleum "
+                "Authority. If there is network evidence too, treat it as a cyberattack as well and report to BruCERT.",
 }
 
 

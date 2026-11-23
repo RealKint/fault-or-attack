@@ -1,0 +1,33 @@
+
+Physical side on the simple plant (on/off pump): 10 seeds x backup on/off, 30-minute runs
+Scenario                        Truth       Correct  Before the limit  Mean time   Most common call
+---------------------------------------------------------------------------------------------------
+Corrosion leak                  FAULT       18/20           18/20          186 s   FAULT: Slow leak into the bund
+Water getting into the tank     FAULT       18/20           18/20          176 s   FAULT: Water getting into the tank
+Leak during planned maintenance FAULT       20/20           20/20            6 s   FAULT: Slow leak into the bund
+Fuel theft                      PHYSICAL    20/20           20/20           60 s   PHYSICAL: Product theft
+Valve forced by hand            PHYSICAL    20/20           20/20            3 s   PHYSICAL: On-site tampering or theft
+Safety trip bypassed            PHYSICAL    20/20           20/20            0 s   PHYSICAL: Safety bypass without a work order
+Insider tampers with sensor B   PHYSICAL    20/20           20/20            0 s   PHYSICAL: Instrument tampering
+Drone strike                    PHYSICAL    20/20           20/20            1 s   PHYSICAL: Physical damage
+Planned bypass for testing      NONE        18/20           18/20              -   nothing
+---------------------------------------------------------------------------------------------------
+Overall: 174/180 correct. PHYSICAL = send site security; NONE = planned work, must stay silent.
+
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+
+Physical side on the realistic plant (PID valve): 10 seeds x backup on/off, 30-minute runs
+Scenario                        Truth       Correct  Before the limit  Mean time   Most common call
+---------------------------------------------------------------------------------------------------
+Corrosion leak                  FAULT       20/20           20/20          187 s   FAULT: Slow leak into the bund
+Water getting into the tank     FAULT       20/20           20/20          178 s   FAULT: Water getting into the tank
+Leak during planned maintenance FAULT       20/20           20/20            6 s   FAULT: Slow leak into the bund
+Fuel theft                      PHYSICAL    20/20           20/20           60 s   PHYSICAL: Product theft
+Valve forced by hand            PHYSICAL    20/20           20/20            1 s   PHYSICAL: On-site tampering or theft
+Safety trip bypassed            PHYSICAL    20/20           20/20            0 s   PHYSICAL: Safety bypass without a work order
+Insider tampers with sensor B   PHYSICAL    20/20           20/20            0 s   PHYSICAL: Instrument tampering
+Drone strike                    PHYSICAL    20/20           20/20            1 s   PHYSICAL: Physical damage
+Planned bypass for testing      NONE        20/20           20/20              -   nothing
+---------------------------------------------------------------------------------------------------
+Overall: 180/180 correct. PHYSICAL = send site security; NONE = planned work, must stay silent.
+

@@ -8,7 +8,7 @@ from statistics import mean
 from .config import Config
 from .detector import Verdict, diagnose
 from .plant import Record, TankSimulator
-from .scenarios import ATTACKS, MODES, SCENARIOS, SMART_ATTACKS, STRESS_ATTACKS
+from .scenarios import ATTACKS, MODES, PHYSICAL_SCENARIOS, SCENARIOS, SMART_ATTACKS, STRESS_ATTACKS
 
 
 SEVERITY = {"ok": 0, "warn": 1, "danger": 2}
@@ -245,4 +245,50 @@ def print_stress(cfg: Config, seeds: int) -> dict:
     print("Correct = called ATTACK after the attack began. Caught before overflow = correct, and before the real tank")
     print("reached 99.5%. In transient and intermittent runs the attack may stop before the tank fills, so those count.")
     print()
+    return out
+
+
+def print_physical(cfg: Config, seeds: int) -> dict:
+    """Score the physical-side scenarios: slow faults, on-site tampering and physical damage.
+
+    Runs are 30 minutes long and the event starts after 400 healthy seconds, because the slow checks average over
+    minutes. "Before the limit" = called right before the real tank overflowed or ran dry (or it never did)."""
+    c = replace(cfg, ticks=1800, inject_at=400)
+    plant = "realistic plant (PID valve)" if c.control == "pid" else "simple plant (on/off pump)"
+    print()
+    print(f"Physical side on the {plant}: {seeds} seeds x backup on/off, 30-minute runs")
+    header = f"{'Scenario':<32}{'Truth':<10}{'Correct':>9}{'Before the limit':>18}{'Mean time':>11}   Most common call"
+    print(header)
+    print("-" * len(header))
+    out: dict = {"seeds": seeds, "plant": c.control, "rows": []}
+    right_all = total_all = 0
+    for key, info in PHYSICAL_SCENARIOS.items():
+        right = before = total = 0
+        delays: list[int] = []
+        calls: dict[str, int] = {}
+        for seed in range(1, seeds + 1):
+            for backup in (False, True):
+                records = TankSimulator(c, key, "permanent", backup, seed).run()
+                v, _ = diagnose(records, c)
+                total += 1
+                call = f"{v.label}: {v.culprit}" if v else "nothing"
+                calls[call] = calls.get(call, 0) + 1
+                ok = (v is None) if info.kind == "NONE" else (v is not None and v.label == info.kind and v.tick >= c.inject_at)
+                right += ok
+                if ok:
+                    limit = next((r.tick for r in records if r.tick >= c.inject_at and (r.level >= 99.5 or r.level <= 0.5)), None)
+                    before += v is None or limit is None or v.tick < limit
+                    if v is not None:
+                        delays.append(v.tick - c.inject_at)
+        right_all += right
+        total_all += total
+        avg = f"{mean(delays):.0f} s" if delays else "-"
+        top = max(calls, key=calls.get)
+        print(f"{info.name:<32}{info.kind:<10}{right:>4}/{total:<4}{before:>11}/{total:<6}{avg:>11}   {top}")
+        out["rows"].append({"key": key, "name": info.name, "kind": info.kind, "right": right, "total": total,
+                            "before": before, "delay": mean(delays) if delays else None, "top": top})
+    print("-" * len(header))
+    print(f"Overall: {right_all}/{total_all} correct. PHYSICAL = send site security; NONE = planned work, must stay silent.")
+    print()
+    out.update(right=right_all, total=total_all)
     return out

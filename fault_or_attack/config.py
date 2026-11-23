@@ -94,6 +94,19 @@ class Config:
     witness_window: int = 5       # seconds the hard-wired witness must disagree for
     witness_gain: float = 1.0     # backup sensor B gaining this much per second more than the forged feedback allows
 
+    # --- physical side (the --physical scenarios; healthy runs and the headline scenarios never trigger them) ---
+    slow_window: int = 300        # slow-leak check: average the mass-balance error over this many seconds ...
+    slow_limit: float = 0.03      # ... and flag a steady loss or gain bigger than this (% of tank per second)
+    access_window: int = 600      # a symptom this soon after unplanned site access (no work order) = on-site cause
+    damage_window: int = 5        # physical damage: several independent hard-wired signs within this many seconds
+    gas_threshold: float = 1.0    # spill collected in the bund (% of tank) at which the gas detector alarms
+    corrosion_start: float = 0.02 # corrosion: the leak starts this small (% of tank per second) ...
+    corrosion_growth: float = 0.0003  # ... grows this much every second ...
+    corrosion_max: float = 0.4    # ... up to this
+    theft_flow: float = 0.15      # theft through an illegal tap outside the bund (% of tank per second)
+    drone_leak: float = 4.0       # drone strike: the tank is holed (% of tank per second)
+    water_rate: float = 0.05      # water ingress, e.g. through a roof seal (% of tank per second)
+
     def __post_init__(self) -> None:
         """Refuse settings the simulator or detector cannot work with."""
         if not 0 <= self.inject_at < self.ticks:

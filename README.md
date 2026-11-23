@@ -22,7 +22,8 @@ The detector checks every reading against the tank's physics and the network, th
 |---|---|
 | Simple plant, 1,440 runs | 99.9% right |
 | Realistic plant (PI valve) | 93.1% right |
-| Normal running, 20 hours | 0 false alarms |
+| Normal running, 20 hours | 0 false alarms (a wider check of 25 healthy hours per plant found 1 false call on the simple plant and 2 on the realistic plant, all from the older per-second rules) |
+| Physical side: corrosion, water ingress, theft, tampering, drone damage, planned work (360 runs) | 354 right; the 6 misses are that one older false call |
 | Real HAI testbed data, tank attacks | 7 of 8 caught (test day 1: 3 of 3, day 2: 4 of 5); 7 of 24 attacks overall, as most target other parts of the plant; 4 false alarms in 42 hours |
 
 ![Accuracy dashboard](accuracy_dashboard.png)
@@ -90,6 +91,15 @@ python "FAULT OR ATTACK.py" --stress --realistic    # realistic plant
 ```
 
 An adaptive attacker (or AI agent) on a trusted device forges sensor A, the motor feedback and the valve position so that every networked signal agrees with physics. Without help the detector loses to it. A hard-wired witness check (backup sensor B and the high-level switch, on by default) catches it in every run before the tank overflows, when backup sensor B is fitted. `--stress` shows the result with the check off and on. Results and the risk review are in `reports/stress_consistent_forgery.txt` and the topology report.
+
+## Physical side: corrosion, theft, tampering and damage
+
+```bash
+python "FAULT OR ATTACK.py" --physical                # simple plant
+python "FAULT OR ATTACK.py" --physical --realistic    # realistic plant
+```
+
+Not every problem comes over the network. Hard-wired site signals (tamper switches, gate and badge events with work orders, the safety bypass flag, a gas detector, the bund level and a water-interface probe) let the detector give a third answer, **PHYSICAL: send site security**, for a valve forced by hand, fuel theft, an insider tampering with sensor B, a safety trip bypassed with no work order, or drone damage. A slow-balance check averages the water balance over five minutes, where sensor noise cancels out, and catches corrosion leaks and water ingress that the per-second checks miss (a leak under about 0.5% of the tank per second went unseen before). Planned work under a work order stays a FAULT or stays silent. Results: `reports/physical_side.txt`.
 
 ## Known limits
 
