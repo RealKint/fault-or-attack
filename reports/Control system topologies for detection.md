@@ -145,3 +145,26 @@ No cyber report is needed: raise a maintenance work order. If the fault caused a
 **What this adds to the project**
 
 The detector's advice for every ATTACK verdict now names BruCERT and the Commissioner. The website has a "In Brunei, who do you tell?" section on the Story tab, a line in the Level 2 answer pop-up, and a practice "Draft report for BruCERT" filled in from the run when you watch an attack. This is the report's upgrade number 6 ("report to CSB?" output), built.
+
+## Addendum: re-ranked against API 2350 and Brunei's rules (23 November 2026)
+
+*Added after reading Emerson's Complete Guide to API 2350 (5th edition), Brunei's Cybersecurity Act (Chapter 272), and Cyber Security Brunei's Code of Practice for Critical Information Infrastructure v2.0 (15 September 2026) with its AI Security Policy Guidelines. "CoP" below means that Code. The map (`topology_map.svg`) and the website's Topology tab now use this ranking. Upgrades that a rule asks for moved up; the topology facts are checked against those documents, and the ranking is still a judgement.*
+
+| New rank | Upgrade | Was | Why it moved |
+|---|---|---|---|
+| 1 | Buncefield replay + API 2350 tank levels (Critical High, High-High, Maximum Working) | 1 | API 2350 gives a Category 3 tank 15 minutes between High-High and Critical High; showing the time left when the verdict arrives tests whether the detector is fast enough to matter |
+| 2 | Virtual level + 2-out-of-3 vote | 2 | Unchanged |
+| 3 | Data diode + network detector N2 + log store | 7 | CoP 10.2.1: a plant network may connect to office IT only where needed, and only one way, out. CoP 10.2.2: watch that outbound flow for anomalies. CoP 6.1.4: keep logs at least 12 months. CoP 7.1.1(h): keep evidence before recovery |
+| 4 | Alarm-suppression attack + check | new | CoP 10.4.3: detect alarms suppressed without authorisation |
+| 5 | Setpoint attack + config check | 5 | CoP 10.3.4 and 10.3.5: validate controller input values; no unauthorised changes |
+| 6 | Status word + controller health | 4 | CoP 10.4.4: baselines for controller cycle time, uptime and stop state |
+| 7 | Safety layer: independent High-High alarm + automatic overfill trip (AOPS) + bypass flag | 8 | API 2350 Category 3 requires an independent High-High alarm, and an AOPS must be independent of the control system. CoP 10.2.6: the safety system connects only to authorised field devices |
+| 8 | Office IT hit + report to BruCERT (partly built) | 6 | Cybersecurity Act s16(1)(b): an incident on a system connected to a critical one can still need reporting |
+| 9 | Actuator response-time check | new | CoP 10.2.5: baseline how long physical processes take, alert on deviations |
+| 10 | Field tap detector N1 | 7 | Split from the old zoning item; still useful for "inside or outside?" |
+| 11–14 | Second tank, outside inflow, pressure-timing game, remote station | 9–12 | Unchanged in substance; moved down |
+| built | Meter-spoof rule in the pipe game | 3 | Already built |
+
+One design rule is now drawn on the map: **the detector only advises the operator and has no line to the overfill trip.** The AI Security Policy Guidelines (9.2.2) say an automated output that could affect a safety-relevant function must not take effect without an authorised person's approval, and API 2350 wants the overfill prevention system independent of the control system. A data diode also changes the attack story: network commands from office IT can no longer reach the controller, so the remaining ways in are removable media, vendor laptops and remote-access links, which the field tap detector (N1) and the controller health check are placed to catch.
+
+Still unknown: the reporting deadline under section 16 of the Act. Neither the Act nor the Code states it; it is "the prescribed period", to be set by regulation.

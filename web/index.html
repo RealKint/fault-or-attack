@@ -2156,61 +2156,71 @@ Reported to the police: not yet`)}</pre>
   (() => {
     const svg = $("topo");
     const UP = {
-      1: ["Buncefield replay scenario", "Low", "A Brunei-style fuel depot story from the real 2005 UK fire: a stuck gauge and an independent switch that did not work. The detector must call it a fault."],
+      // Re-ranked on 23 Nov 2026 against API 2350 (5th ed.), Brunei's Cybersecurity Act (Cap. 272) and
+      // Cyber Security Brunei's Code of Practice for CII v2.0 (2026). "CoP" below means that Code.
+      1: ["Buncefield replay + API 2350 alarm levels", "Low", "A fuel depot story from the real 2005 UK fire: a stuck gauge and an independent switch that did not work. The tank gets API 2350's three levels (Critical High, High-High, Maximum Working), so the map can show how much of the 15-minute response window is left when the verdict arrives. The detector must call it a fault."],
       2: ["Virtual level + 2-out-of-3 vote", "Low", "A third level reading worked out from the pump and the flow meter, so a lying sensor is outvoted instead of argued with."],
-      3: ["Meter-spoof rule in the pipe game", "Low", "A faked meter makes one pipe look like it loses water and the next like it gains; a real leak only loses."],
-      4: ["Status word on sensor A", "Low", "\"Bad value flagged bad\" points to a fault; \"wrong value flagged good\" points to an attack. Adds the sensor's fault history."],
-      5: ["Setpoint attack + config check", "Low", "Catches an attacker who quietly changes the target level, where every physics check still passes."],
-      6: ["Office IT hit + report to BruCERT", "Low", "Reporting to BruCERT is now built. Still to add: a scenario where office IT is hit while the plant is healthy, so the answer is 'cyber incident, plant fine'."],
-      7: ["Zoned network + 2–3 detectors", "Medium", "A firewall between office IT and the plant, and a detector on each side. Which detector fires tells where the attack came in."],
-      8: ["Safety layer with trip valve", "Medium", "Backup sensor B and the switches drive their own trip valve on separate wiring, which a network attacker cannot reach. A bypass flag shows tampering or a skipped safety step."],
-      9: ["Second tank, own controller", "Medium–high", "Two tanks give two water balances. A fake reading must now stay consistent across both, which is much harder."],
-      10: ["Outside inflow / shared manifold", "Low → medium", "Someone else's pipeline changes the flow without warning, as at Buncefield. A test that the detector does not cry wolf."],
-      11: ["Pressure-timing mini-game", "Medium", "Pressure sensors at both ends of a pipe time the leak's pressure wave, so you find where in the pipe it is, not just which pipe."],
-      12: ["Remote station over radio", "Medium", "Stale readings with gaps point to a link fault; fresh readings that contradict local sensors point to an attack."],
+      3: ["Data diode + network detector N2 + log store", "Low → medium", "Brunei's Code of Practice (clause 10.2.1) says a plant network may send data out to office IT only one way, and (10.2.2) that this outbound flow must be watched for anomalies. Logs must be kept 12 months (6.1) and evidence kept before recovery (7.1.1)."],
+      4: ["Alarm-suppression attack + check", "Low", "An attacker silences the High-High alarm so the operator never hears it. CoP clause 10.4.3 asks sites to detect alarms being suppressed without permission."],
+      5: ["Setpoint attack + config check", "Low", "Catches an attacker who quietly changes the target level, where every physics check still passes. Matches CoP clauses 10.3.4 and 10.3.5 (check input values; no unauthorised changes)."],
+      6: ["Status word + controller health", "Low", "\"Bad value flagged bad\" points to a fault; \"wrong value flagged good\" points to an attack. Adds the sensor's fault history, and baselines for the controller's cycle time, uptime and stop state (CoP 10.4.4)."],
+      7: ["Safety layer: independent alarm + overfill trip", "Medium", "API 2350 Category 3: an independent High-High alarm (backup sensor B, the switches) and an automatic overfill prevention system that closes the inlet on its own, separate from the control system. CoP 10.2.6: the safety system connects only to authorised field devices. A bypass flag shows tampering or a skipped safety step."],
+      8: ["Office IT hit + report to BruCERT", "Low", "Reporting to BruCERT is built. Still to add: a scenario where office IT is hit while the plant is healthy. Under section 16 of the Cybersecurity Act, an incident on a connected system can still need reporting."],
+      9: ["Actuator response-time check", "Low → medium", "Learn how long the valve and pump normally take to respond, and alert when they are slower or faster than normal (CoP clause 10.2.5)."],
+      10: ["Field tap detector N1", "Medium", "A second detector on the plant network. If only N1 fires, the attack started inside the plant; if N2 fires too, it came from outside."],
+      11: ["Second tank, own controller", "Medium–high", "Two tanks give two water balances. A fake reading must now stay consistent across both, which is much harder."],
+      12: ["Outside inflow / shared manifold", "Low → medium", "Someone else's pipeline changes the flow without warning, as at Buncefield. A test that the detector does not cry wolf."],
+      13: ["Pressure-timing mini-game", "Medium", "Pressure sensors at both ends of a pipe time the leak's pressure wave, so you find where in the pipe it is, not just which pipe."],
+      14: ["Remote station over radio", "Medium", "Stale readings with gaps point to a link fault; fresh readings that contradict local sensors point to an attack."],
+      15: ["Meter-spoof rule in the pipe game", "Low", "A faked meter makes one pipe look like it loses water and the next like it gains; a real leak only loses."],
     };
-    const DONE = { 6: "partly built", 3: "built" };
+    const DONE = { 8: "partly built", 15: "built" };
     const BRANCHES = [
-      ["Zones", "Say where an attack came in", [7, 12, 6], "b0"],
-      ["More tanks", "A pattern of clues, not one number", [9, 10, 3, 11], "b1"],
-      ["Independent witnesses", "Checks a network attacker cannot reach", [2, 8, 4, 5], "b2"],
-      ["Real scenarios", "Stories from real plants", [1], "b3"],
+      ["Zones", "Say where an attack came in", [3, 10, 8, 14], "b0"],
+      ["More tanks", "A pattern of clues, not one number", [11, 12, 15, 13], "b1"],
+      ["Independent witnesses", "Checks a network attacker cannot reach", [2, 7, 6, 5], "b2"],
+      ["Real stories, Brunei rules", "Real plant stories, and checks Brunei's Code of Practice asks for", [1, 4, 9], "b3"],
     ];
     // zones: [x, y, w, h, label, extra class]
-    const ZONES = [[8, 8, 984, 108, "Outside and office IT · Purdue levels 4–5"], [8, 120, 984, 38, "Firewall / DMZ · level 3.5", "uplab"],
+    const ZONES = [[8, 8, 984, 108, "Outside and office IT · Purdue levels 4–5"], [8, 120, 984, 38, "Data diode / DMZ · level 3.5", "uplab"],
       [8, 162, 984, 168, "Control room · levels 2–3"], [8, 334, 984, 34, "Field network · level 1"], [8, 372, 736, 380, "The plant · level 0"],
       [752, 372, 240, 380, "Safety layer · own wiring", "safe"]];
     // nodes: id, x, y, w, h, label, sub, ups (upgrade numbers), kind ("" today, "added", "threat")
     const N = [
       ["att", 24, 34, 190, 70, "Attacker", "often far away, online", [], "threat"],
-      ["it", 240, 34, 200, 70, "Office IT network", "billing, email, planning", [6, 7]],
+      ["it", 240, 34, 200, 70, "Office IT network", "billing, email, planning", [8, 3]],
       ["bru", 470, 34, 220, 70, "BruCERT · CSB", "where attacks are reported", [], "added"],
-      ["fw", 240, 128, 200, 26, "Firewall / data diode", "", [7]],
-      ["n2", 470, 128, 210, 26, "Network detector N2", "", [7]],
-      ["hmi", 24, 190, 190, 64, "Operator screen", "what the operator sees"],
+      ["fw", 240, 128, 200, 26, "Data diode · one-way", "", [3]],
+      ["n2", 470, 128, 210, 26, "Network detector N2", "", [3]],
+      ["log", 740, 128, 240, 26, "Log store · 12 months", "", [3]],
+      ["hmi", 24, 190, 190, 64, "Operator screen", "the operator decides"],
       ["cfg", 24, 262, 190, 50, "Setpoint check", "on the controller", [5]],
       ["ctl", 240, 190, 200, 64, "Controller (PLC)", "pump logic · secret probes"],
-      ["det", 470, 190, 250, 64, "Detector", "physics + network → verdict"],
+      ["det", 470, 190, 250, 64, "Detector", "physics + network → advice"],
       ["vl", 470, 262, 120, 50, "Virtual level", "", [2]],
       ["vote", 600, 262, 120, 50, "2-of-3 vote", "", [2]],
-      ["n1", 470, 338, 250, 26, "Field tap detector N1", "", [7]],
+      ["sup", 760, 190, 220, 40, "Alarm suppression", "", [4]],
+      ["hlth", 760, 236, 220, 40, "Controller health", "", [6]],
+      ["rsp", 760, 282, 220, 40, "Response-time check", "", [9]],
+      ["n1", 470, 338, 250, 26, "Field tap detector N1", "", [10]],
       ["pump", 24, 400, 170, 60, "Pump / PID valve", "fills the tank"],
-      ["inf", 24, 476, 170, 60, "Outside inflow", "someone else's line", [10]],
+      ["inf", 24, 476, 170, 60, "Outside inflow", "someone else's line", [12]],
       ["bun", 24, 560, 170, 60, "Buncefield replay", "a real tank overfill", [1]],
       ["t1", 220, 392, 190, 92, "Tank 1", "the plant today"],
       ["sa", 220, 492, 190, 46, "Sensor A · networked", ""],
-      ["sw", 220, 546, 190, 50, "Status word", "+ fault history", [4]],
-      ["t2", 220, 612, 190, 60, "Tank 2", "with its own controller", [9]],
+      ["sw", 220, 546, 190, 50, "Status word", "+ fault history", [6]],
+      ["t2", 220, 612, 190, 60, "Tank 2", "with its own controller", [11]],
+      ["lvl", 220, 680, 190, 46, "API 2350 tank levels", "", [1]],
       ["mtr", 440, 400, 150, 56, "Outlet flow meter", ""],
       ["pip", 440, 476, 290, 56, "Pipes + meters", "the Level 1 game"],
-      ["spf", 440, 540, 290, 40, "Meter-spoof rule (+ / − pair)", "", [3], "added"],
-      ["prs", 440, 588, 290, 40, "Pressure sensors at pipe ends", "", [11]],
-      ["rtu", 440, 644, 290, 60, "Remote station (RTU)", "over a radio link", [12]],
+      ["spf", 440, 540, 290, 40, "Meter-spoof rule (+ / − pair)", "", [15], "added"],
+      ["prs", 440, 588, 290, 40, "Pressure sensors at pipe ends", "", [13]],
+      ["rtu", 440, 644, 290, 60, "Remote station (RTU)", "over a radio link", [14]],
       ["sb", 762, 400, 220, 46, "Backup sensor B", ""],
       ["sws", 762, 454, 220, 46, "Full / empty switches", ""],
       ["pwr", 762, 508, 220, 46, "Power monitor", ""],
-      ["sis", 762, 580, 220, 60, "Safety logic + trip valve", "acts on its own", [8]],
-      ["byp", 762, 648, 220, 46, "Bypass / key flag", "", [8]],
+      ["sis", 762, 580, 220, 60, "Overfill trip (AOPS)", "closes the inlet on its own", [7]],
+      ["byp", 762, 648, 220, 46, "Bypass / key flag", "", [7]],
     ];
     // links: points, kind, ups, flags ("today" = only in today's flat network)
     const L = [
@@ -2219,19 +2229,23 @@ Reported to the police: not yet`)}</pre>
       [[[410, 515], [425, 515], [425, 351]], "net"], [[[720, 222], [738, 222], [738, 351]], "net"],
       [[[214, 287], [226, 287], [226, 254]], "net", [5]],
       [[[119, 104], [119, 124], [226, 124], [226, 351]], "attack", [], "today"],
-      [[[214, 69], [240, 69]], "attack", [6, 7]], [[[340, 104], [340, 128]], "attack", [7]], [[[340, 154], [340, 190]], "attack", [7]],
-      [[[440, 141], [470, 141]], "net", [7]],
+      [[[214, 69], [240, 69]], "attack", [8, 3]], [[[340, 104], [340, 128]], "attack", [3]], [[[340, 154], [340, 190]], "attack", [3]],
+      [[[440, 141], [470, 141]], "net", [3]],
       [[[705, 190], [705, 104]], "report"],
       [[[595, 254], [595, 262]], "net", [2]], [[[590, 287], [600, 287]], "net", [2]],
-      [[[194, 430], [220, 430]], "pipe"], [[[194, 506], [207, 506], [207, 462], [220, 462]], "pipe", [10]],
+      [[[194, 430], [220, 430]], "pipe"], [[[194, 506], [207, 506], [207, 462], [220, 462]], "pipe", [12]],
       [[[410, 428], [440, 428]], "pipe"], [[[515, 456], [515, 476]], "pipe"],
-      [[[440, 510], [432, 510], [432, 642], [410, 642]], "pipe", [9]],
+      [[[440, 510], [432, 510], [432, 642], [410, 642]], "pipe", [11]],
       [[[194, 575], [204, 575], [204, 515], [220, 515]], "note", [1]],
       [[[762, 423], [750, 423], [750, 238], [720, 238]], "wire"], [[[762, 477], [750, 477], [750, 238], [720, 238]], "wire"], [[[762, 531], [750, 531], [750, 238], [720, 238]], "wire"],
-      [[[872, 554], [872, 580]], "wire", [8]],
-      [[[872, 694], [872, 738], [14, 738], [14, 430], [24, 430]], "trip", [8]],
-      [[[730, 674], [744, 674], [744, 351], [730, 351]], "radio", [12]],
-      [[[730, 608], [744, 608]], "net", [11]],
+      [[[872, 554], [872, 580]], "wire", [7]],
+      [[[872, 694], [872, 738], [14, 738], [14, 430], [24, 430]], "trip", [7]],
+      [[[730, 674], [744, 674], [744, 351], [730, 351]], "radio", [14]],
+      [[[730, 608], [744, 608]], "net", [13]],
+      // added 23 Nov 2026 (keep new lines at the end: the stories below refer to lines by their position)
+      [[[760, 154], [760, 170], [712, 170], [712, 190]], "net", [3]],
+      [[[720, 210], [760, 210]], "net", [4]], [[[870, 230], [870, 236]], "net", [6]], [[[870, 276], [870, 282]], "net", [9]],
+      [[[194, 605], [200, 605], [200, 703], [220, 703]], "note", [1]],
     ];
     const NS2 = "http://www.w3.org/2000/svg";
     const g0 = el("g", {}, svg), gl = el("g", {}, svg), gn = el("g", {}, svg);
@@ -2255,8 +2269,9 @@ Reported to the police: not yet`)}</pre>
         el("circle", { cx: x + w - 13, cy: y + (h < 30 ? h / 2 : 13), r: 10, class: "bd" }, g);
         el("text", { x: x + w - 13, y: y + (h < 30 ? h / 2 : 13) + 4, "text-anchor": "middle", class: "bt" }, g).textContent = n; }
     }
-    // zone labels for the two thin rows would collide with boxes; move them to the right end
-    g0.querySelectorAll("text").forEach((t, i) => { if (i === 1 || i === 3) { t.setAttribute("x", 980); t.setAttribute("text-anchor", "end"); } });
+    // the field-network label would collide with the boxes in its thin row; move it to the right end
+    // (the DMZ label stays at the left, where the row is empty, because the log store fills the right end)
+    g0.querySelectorAll("text").forEach((t, i) => { if (i === 3) { t.setAttribute("x", 980); t.setAttribute("text-anchor", "end"); } });
 
     // ---- what touches what: a line belongs to a box when one of its ends sits on that box ----
     const lkEls = [...gl.querySelectorAll("polyline")];
@@ -2298,21 +2313,21 @@ Reported to the police: not yet`)}</pre>
     // showing an upgrade highlights every box and line it touches
     let sel = null, tr = null, qz = null;   // tr: the story being followed, { key, i }
     const capToday = `<span><b>Today</b> the network is flat: an attacker who gets in lands straight on the same network as the controller and sensor A (red dashed line). Backup sensor B, the switches and the power monitor are already wired straight to the detector.</span>`;
-    const capDefault = `<b>Click any box</b> to see what it is and how it helps. A dashed amber box is a planned upgrade, and its number is its rank: 1 gives the most for the least work.`;
+    const capDefault = `<b>Click any box</b> to see what it is and how it helps. A dashed amber box is a planned upgrade, and its number is its rank: 1 gives the most for the least work. The detector only <b>advises</b> the operator: it has no line to the overfill trip, which acts on its own.`;
     // For each box: [what it is, how it helps the system]
     const DESC = {
       att: ["Someone trying to break in, usually from far away over the internet.", "Puts the threat on the map, so you can see which defences stand between the attacker and the pumps."],
-      it: ["The company's everyday computers: billing, email, planning.", "Attackers often get in here first, as at Colonial Pipeline in 2021. Keeping it separate from the plant stops one break-in from reaching the pumps."],
+      it: ["The company's everyday computers: billing, email, planning.", "Attackers often get in here first, as at Colonial Pipeline in 2021. Keeping it separate from the plant stops one break-in from reaching the pumps. Under section 16 of Brunei's Cybersecurity Act, an incident on a system connected to a critical one can still need reporting."],
       bru: ["Brunei's national computer emergency response team, part of Cyber Security Brunei (CSB).", "This is where an attack gets reported (hotline 245 8001, cert@brucert.org.bn). The detector's ATTACK verdict now names it, and the site drafts the report from the run."],
-      fw: ["A checkpoint between office IT and the plant. A data diode is a one-way version: data can leave the plant but nothing can come in.", "Blocks or logs outside commands and traffic floods before they reach the controller."],
-      n2: ["A detector that watches the traffic crossing the firewall.", "If N2 fires, the attack came from outside. If only N1 fires, it started inside the plant. Together they tell you where the attacker got in."],
-      hmi: ["The control-room screen: the level, the pump and the alarms the operator sees.", "It is what attackers try to fool. The detector checks what the screen says against the tank's physics."],
+      fw: ["A one-way link between the plant and office IT: data can leave the plant, but nothing can come in.", "Brunei's Code of Practice for critical sites (clause 10.2.1) allows a plant network to connect to office IT only where needed, and then only one way, out. Outside commands and traffic floods cannot reach the controller this way; attackers then need another route, such as a USB stick or a vendor laptop."],
+      n2: ["A detector that watches the data flowing out through the diode, as Code of Practice clause 10.2.2 asks.", "If N2 fires, the attack came from outside. If only N1 fires, it started inside the plant. Together they tell you where the attacker got in."],
+      hmi: ["The control-room screen: the level, the pump, the alarms and the detector's advice.", "It is what attackers try to fool, so the detector checks it against the tank's physics. The operator makes the final call: Brunei's AI guidelines (9.2.2) say an automated output that could affect a safety function needs a person to approve it."],
       cfg: ["A check that compares the controller's settings, like the target level, with the approved ones.", "Catches an attacker who quietly changes a setting. Every physics check would still pass, because the plant does exactly what it was told."],
       ctl: ["The controller (a PLC) runs the pump or valve. Now and then it sends a short secret probe: a brief pause in pumping.", "The probes act like a watermark: a live sensor shows the small dip, but a recording played back by an attacker can't."],
-      det: ["The brain of the project. It reads every signal and checks it against the tank's physics and the network.", "It decides FAULT, ATTACK or 'still checking', explains why, and says who to call: a technician or BruCERT."],
+      det: ["The brain of the project. It reads every signal and checks it against the tank's physics and the network.", "It advises FAULT, ATTACK or 'still checking', explains why, and says who to call: a technician or BruCERT. It never drives the safety trip itself. This is the job Brunei's Code of Practice (clause 6.2.1) gives critical sites: work out whether each event is a cybersecurity incident."],
       vl: ["A level that is worked out from the pump and the flow meter instead of being measured.", "A third opinion about the level that nobody can fake over the network, because it is calculated, not sent."],
       vote: ["Compares sensor A, backup sensor B and the virtual level.", "With three readings, the odd one out is outvoted, so the detector knows which reading is lying instead of only knowing that two disagree."],
-      n1: ["A detector listening on the plant network, right next to the sensors.", "Sees replays, fake devices and strange messages on the plant network that a detector at the firewall would miss."],
+      n1: ["A detector listening on the plant network, right next to the sensors.", "Sees replays, fake devices and strange messages on the plant network that a detector at the data diode would miss. It also covers the ways in a diode cannot block, such as a USB stick or a vendor laptop."],
       pump: ["Fills the tank: an on/off pump on the simple plant, a smoothly opening valve on the realistic plant.", "Comparing what it was told to do with what it actually did reveals pump failures and forged commands."],
       inf: ["Fuel arriving from a pipeline that someone else controls.", "A false-alarm test: the flow can change for an innocent reason, as it did at Buncefield, and the detector must not call that an attack."],
       bun: ["A scenario based on the 2005 Buncefield depot fire in the UK: a tank gauge stuck and the independent high-level switch didn't work, so the tank overflowed.", "Proves the detector calls a real equipment failure a fault, not an attack, using a true oil and gas story."],
@@ -2325,11 +2340,16 @@ Reported to the police: not yet`)}</pre>
       spf: ["A rule in the Level 1 pipe game: sometimes no pipe leaks and a meter is lying instead.", "A faked meter makes one pipe look like it loses water and the next look like it gains. A real leak only loses. That difference tells a fault from an attack."],
       prs: ["Pressure sensors at both ends of each pipe.", "A leak sends a pressure wave both ways; timing it finds where in the pipe the leak is, not just which pipe. Two sensors are also harder to fake than one meter."],
       rtu: ["Equipment at a far-away site that reports over a radio link.", "Stale readings with gaps point to a link fault. Fresh readings that contradict the local sensors point to an attack."],
-      sb: ["A second level sensor, wired straight to the control room instead of going over the network.", "An attacker on the network can't fake it, so if sensor A and sensor B disagree, A is the suspect."],
+      sb: ["A second level sensor, wired straight to the control room instead of going over the network.", "An attacker on the network can't fake it, so if sensor A and sensor B disagree, A is the suspect. It is the start of the independent High-High alarm that API 2350 requires for Category 3 tanks."],
       sws: ["Simple switches at the top and bottom of the tank.", "A last, independent check that the tank is not overflowing or running dry."],
       pwr: ["Reports whether the pump, sensors and meters have power.", "Explains outages: everything going dark at once is a power fault, not a hack."],
-      sis: ["Its own small control system that shuts the inlet if the level gets too high, on separate wiring.", "A protection layer a network attacker can't reach. It stops an overflow even if the main control system has been fooled."],
+      sis: ["An automatic overfill prevention system (AOPS): its own small control system that shuts the inlet if the level gets too high, on separate wiring.", "API 2350 says it must be independent of the main control system, and Brunei's Code of Practice (10.2.6) says the safety system may connect only to authorised field devices. It stops an overflow even if the main control system has been fooled, and the detector has no line to it."],
       byp: ["Shows when the safety system is bypassed or switched into programming mode.", "A safety step skipped by mistake is a procedure fault. An unexpected bypass or reprogramming may be tampering, as in the TRITON attack on a petrochemical plant in 2017."],
+      log: ["A store that keeps the plant's network and detector logs, with times from one clock, safe from being changed or deleted.", "Brunei's Code of Practice keeps logs at least 12 months (clause 6.1.4) and asks for evidence to be kept before recovery starts (7.1.1). It makes the ATTACK advice 'keep the logs' point to a real place."],
+      sup: ["A check that notices when an alarm is switched off or silenced without permission.", "An attacker who silences the High-High alarm can let a tank overflow without anyone hearing. Code of Practice clause 10.4.3 asks critical sites to detect this."],
+      hlth: ["A learned picture of the controller's normal cycle time, uptime and stop state.", "A controller that suddenly runs slower, restarts or stops unexpectedly may have been reprogrammed. Code of Practice clause 10.4.4 asks for these baselines."],
+      rsp: ["A learned picture of how long the valve and pump normally take to respond to a command.", "A worn valve slows down gradually (a fault); a command that is answered at once, or not at all, may be forged. Code of Practice clause 10.2.5 asks sites to watch physical processes for this."],
+      lvl: ["API 2350's three tank levels: Critical High (overflow), High-High (stop filling now) and Maximum Working (normal top).", "For a Category 3 tank the operator has 15 minutes between High-High and Critical High. Showing the time left when the verdict arrives proves the detector is fast enough to matter."],
     };
     const NODE = Object.fromEntries(N.map(n => [n[0], n]));
     // boxes you can try for yourself in the game
@@ -2363,7 +2383,7 @@ Reported to the police: not yet`)}</pre>
     };
     const ICON_OF = { att: "person", it: "screen", bru: "mail", fw: "wall", n2: "eye", hmi: "screen", cfg: "gear", ctl: "chip", det: "shield",
       vl: "calc", vote: "vote", n1: "eye", pump: "pump", inf: "pipe", bun: "flame", t1: "tank", sa: "sensor", sw: "list", t2: "tank",
-      mtr: "meter", pip: "pipe", spf: "meter", prs: "meter", rtu: "radio", sb: "sensor", sws: "toggle", pwr: "bolt", sis: "shield", byp: "key" };
+      mtr: "meter", pip: "pipe", spf: "meter", prs: "meter", rtu: "radio", sb: "sensor", sws: "toggle", pwr: "bolt", sis: "shield", byp: "key", log: "list", sup: "eye", hlth: "chip", rsp: "meter", lvl: "tank" };
     const icon = (id) => `<svg class="pop-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[ICON_OF[id]] || IC.gear}</svg>`;
     // Clicking a box opens a mini box right next to it: what it is and how it helps.
     const wrap = svg.parentElement;   // the map's scrolling frame, which holds the mini box too
@@ -2462,7 +2482,7 @@ Reported to the police: not yet`)}</pre>
       attack: { name: "A cyberattack", tone: "attack", verdict: "ATTACK", steps: [
         [["att"], [], "Someone far away, online, wants to hide what is happening at the tank."],
         [["it"], [9], "They get into the office network first, for example with a fake email."],
-        [["fw", "n2"], [10, 12], "To reach the plant they must cross the firewall. Network detector N2 notices the odd traffic. (Both are a planned upgrade.)"],
+        [["fw", "n2", "log"], [10, 12, 29], "To reach the plant they must get past the data diode, which only lets data out. Network detector N2 notices the attempt and the log store keeps the evidence. (All three are planned upgrade 3.) A diode is not perfect: attackers also come in on a USB stick or a vendor laptop."],
         [["sa"], [11, 2, ~5], "Inside, they play back old readings from sensor A. The level looks normal while it is not."],
         [["hmi"], [~0], "The operator's screen shows the fake level. Everything looks calm."],
         [["sb", "ctl"], [22, 3], "But backup sensor B is on its own wire and shows the real level. And the controller's secret test dip is missing from the played-back readings."],
