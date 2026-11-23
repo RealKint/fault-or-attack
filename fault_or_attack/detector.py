@@ -393,7 +393,7 @@ class FaultOrAttackDetector:
         r, old = self.h[-1], self.h[-w - 1]
         if r.work_order or not r.gas_alarm or not self.h[-cfg.damage_window - 1].gas_alarm:
             return None                       # a gas alarm that has only just started: physical damage is checked first
-        if r.bund - old.bund > cfg.bund_rise:
+        if r.bund - old.bund > cfg.bund_rise and r.bund - self.h[-cfg.damage_window - 1].bund < 0.5 * (r.bund - old.bund):
             return self._v("FAULT", "Slow leak into the bund",
                            f"The bund rose {r.bund - old.bund:.1f}% in {w} s and the gas detector smells product. A real "
                            "leak, typically corrosion: isolate the section and send a technician.")
@@ -411,6 +411,9 @@ class FaultOrAttackDetector:
         if len(res) < 0.9 * w:
             return None
         rate = mean(res)
+        recent = sum(x for x in self.res[-cfg.damage_window:] if x is not None)
+        if abs(recent) > 0.5 * abs(sum(res)):
+            return None                       # most of it arrived in the last few seconds: sudden, not slow
         r, old = self.h[-1], self.h[-w]
         if r.sensor_b is not None and r.sensor is not None and abs(r.sensor_b - r.sensor) > 3:
             return None                       # the sensors disagree: the drift and witness rules decide
