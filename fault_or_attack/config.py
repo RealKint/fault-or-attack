@@ -97,7 +97,8 @@ class Config:
 
     # --- physical side (the --physical scenarios; healthy runs and the headline scenarios never trigger them) ---
     slow_window: int = 300        # slow-leak check: average the mass-balance error over this many seconds ...
-    slow_limit: float = 0.03      # ... and flag a steady loss or gain bigger than this (% of tank per second)
+    slow_limit: float = 0.01      # steady unexplained loss or gain above this (% of tank per second) = slow leak, theft or ingress
+    bund_rise: float = 2.25       # bund up more than this within slow_window = product collecting there (heavy rain stays below)
     access_window: int = 600      # a symptom this soon after unplanned site access (no work order) = on-site cause
     damage_window: int = 5        # physical damage: several independent hard-wired signs within this many seconds
     gas_threshold: float = 1.0    # spill collected in the bund (% of tank) at which the gas detector alarms
