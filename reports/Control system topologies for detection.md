@@ -218,3 +218,18 @@ Checked against a reference on real oil and gas control network layouts (Purdue,
 3. The safety layer's wiring to the detector is labelled **"status only"**, as CISA and NIST recommend for SIS links.
 4. Each zone carries an **example IEC 62443 security level** (office SL1, DMZ and control room SL2, field network and plant SL3, safety layer SL4). A real site sets its own from a risk assessment.
 5. The field network is marked **"Modbus: no authentication"**. NIST notes many Level 0 devices cannot be authenticated and encryption blinds network monitors, which is why physics-based checks matter: they work whether or not the traffic is encrypted.
+
+### Third revision: response, recovery and an independent witness (23 November 2026)
+After reviewing the day's material (Dragos and SANS 2026 reports, IBM Cost of a Data Breach 2026, the Colonial Pipeline testimony, Google GTIG's November 2026 AI threat update, the CISA/ASD AI-in-OT principles and Brunei's Code of Practice v2.0), the map gained a second DMZ row, a larger plant and safety layer, and a new **Response and recovery** zone. New boxes and the new ranks:
+
+| Rank | Upgrade | Why |
+|---|---|---|
+| 2 (was 8) | **Office IT hit, plant fine** | Colonial stopped for days because it could not prove the plant was safe; Conpet kept oil flowing because it could. IBM 2026: 63% of breach cost is detection, escalation and lost business. |
+| 3 | + **Jump host with multi-factor login** in the DMZ; the supplier now comes in only through it | 73% of Dragos incident cases involved stolen VPN or jump-host logins; Dragos and SANS: every vendor and cellular link should end in a monitored zone. The cellular modem stays on the map as the red bypass. |
+| 5 (was 2) | **Independent virtual level** using a new hard-wired **motor current** sensor | The stress test showed the old virtual level used networked signals, so a consistent forgery fooled the vote. |
+| 6 | + **Signed program backups** (offline) | Code of Practice 10.3.1–10.3.2; NIST SP 1339 (test backups, do not just keep them). |
+| 7 | + **Detector heartbeat** | Nothing noticed a silent detector; detectors are attack targets too (arXiv 2605.27674). |
+| 8 | + **Manual Hand-Off-Auto switch** at the pump | Colonial ran some lines manually; DOE cyber-informed engineering reinstated these switches. |
+| 10 (new) | **Escalation chain + site security**: incident team (CIRT), BruCERT and the Commissioner (Act s16), callback on a known channel; physical damage to site security | 82% of organisations have no rule for when an odd reading becomes a cyber investigation (Dragos). |
+
+BruCERT's box now also names the Commissioner of Cybersecurity. Removable-media kiosks and a trusted local time source were judged useful but left off the map for space; they are recorded here as notes (NIST SP 1334; Code of Practice 6.1.4(a)).
