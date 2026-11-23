@@ -49,6 +49,8 @@ class FaultOrAttackDetector:
         self.h: list[Record] = []
         self.res: list[float | None] = []         # mass-balance error per second, worked out once
         self.seen: dict[tuple[float, ...], int] = {}  # past reading windows -> first second they appeared
+        self.replay_from: int | None = None       # where the latest replay match pointed in the past
+        self.replay_streak = 0                    # seconds in a row the match kept following the same recording
         self.cusum_up = self.cusum_down = 0.0     # two-sided CUSUM of the mass-balance error
         self.last_new_device: int | None = None   # when a never-seen-before device last appeared
         self.probe_results: deque[bool] = deque(maxlen=3)   # True = the probe was NOT echoed
@@ -502,7 +504,17 @@ class FaultOrAttackDetector:
         if None in tail or max(tail) - min(tail) < 0.5:
             return None                          # a flat line is the stuck-sensor rule's job
         i = self.seen.get(tail)
-        if i is not None:
+        # A recording keeps playing, so a real replay matches again next second, one step further on.
+        # Rounded sensors sometimes repeat an old stretch by chance, but such a repeat breaks at once.
+        if i is None:
+            self.replay_streak = 0
+            return None
+        same_tape = self.replay_from is not None and i == self.replay_from + 1
+        self.replay_streak = self.replay_streak + 1 if same_tape else 1
+        self.replay_from = i
+        if self.replay_streak >= self.cfg.replay_confirm:
+            i -= self.replay_streak - 1
+            k += self.replay_streak - 1
             return self._v("ATTACK", "Replay attack",
                            f"The last {k} readings are an exact copy of seconds {i}-{i + k - 1}. "
                            "Real sensor noise never repeats, so this is a recording.")
@@ -595,11 +607,19 @@ class FaultOrAttackDetector:
                            f"{self.cfg.demand:.1f}%/s: the outlet is passing more than it should.")
 
     def _flatline(self):
-        n = self.cfg.flatline_ticks
+        cfg = self.cfg
+        n = cfg.flatline_ticks
         tail = [r.sensor for r in self.h[-n:]]
         if len(tail) == n and None not in tail and len(set(tail)) == 1:
+            if cfg.quantize and self.flat_run < 2 * n:
+                # A rounded sensor can sit on one value by chance while the tank is balanced. Only call it stuck
+                # early if the valve and outflow say the level should have moved by more than a rounding step.
+                should_move = sum(self._expected_change(r) for r in self.h[-n:-1] if r.outflow is not None)
+                if abs(should_move) < 3 * cfg.quantize:
+                    return None
             return self._v("FAULT", "Sensor stuck",
-                           f"Sensor A has reported exactly {tail[0]:.1f}% for {n} seconds. A live sensor always has some noise.")
+                           f"Sensor A has reported exactly {tail[0]:.1f}% for {self.flat_run} seconds. A live sensor "
+                           "always has some noise.")
 
     def _drift_vs_backup(self):
         cfg = self.cfg
