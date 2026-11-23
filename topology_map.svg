@@ -5,21 +5,23 @@
 <text x="8" y="52" font-size="14" fill="#3c4045">Grey = in the project today · green = added · dashed amber = planned upgrade (number = rank, re-ranked against API 2350 and Brunei's rules)</text>
 <g transform="translate(0,64)">
 <rect x="8" y="8" width="984" height="108" fill="#d8d4cb"/>
-<text x="18" y="28" font-size="13" font-weight="600" fill="#3c4045">Outside and office IT · Purdue levels 4–5</text>
+<text x="18" y="28" font-size="13" font-weight="600" fill="#3c4045">Outside and office IT · Purdue levels 4–5 · SL1</text>
 <rect x="8" y="120" width="984" height="38" fill="#d8d4cb"/>
-<text x="18" y="144.0" font-size="13" font-weight="600" fill="#3c4045">Data diode / DMZ · level 3.5</text>
+<text x="18" y="144.0" font-size="13" font-weight="600" fill="#3c4045">DMZ · level 3.5 · SL2</text>
 <rect x="8" y="162" width="984" height="168" fill="#d8d4cb"/>
-<text x="18" y="182" font-size="13" font-weight="600" fill="#3c4045">Control room · levels 2–3</text>
+<text x="18" y="182" font-size="13" font-weight="600" fill="#3c4045">Control room · levels 2–3 · SL2</text>
 <rect x="8" y="334" width="984" height="34" fill="#d8d4cb"/>
-<text x="980" y="356.0" text-anchor="end" font-size="13" font-weight="600" fill="#3c4045">Field network · level 1</text>
+<text x="980" y="356.0" text-anchor="end" font-size="13" font-weight="600" fill="#3c4045">Field network · level 1 · SL3</text>
 <rect x="8" y="372" width="736" height="380" fill="#d8d4cb"/>
-<text x="18" y="392" font-size="13" font-weight="600" fill="#3c4045">The plant · level 0</text>
+<text x="18" y="392" font-size="13" font-weight="600" fill="#3c4045">The plant · level 0 · SL3</text>
 <rect x="752" y="372" width="240" height="380" fill="#d9e9da"/>
-<text x="762" y="392" font-size="13" font-weight="600" fill="#3c4045">Safety layer · own wiring</text>
+<text x="762" y="392" font-size="13" font-weight="600" fill="#3c4045">Safety layer · own wiring · SL4</text>
+<text x="30" y="345" font-size="12" font-style="italic" font-weight="600" fill="#3c4045">Modbus: no authentication</text>
+<text x="884" y="571" font-size="12" font-style="italic" font-weight="600" fill="#3c4045">status only out</text>
 <polyline points="214,222 240,222" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <polyline points="440,222 470,222" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <polyline points="24,351 730,351" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="6"/>
-<polyline points="340,254 340,351" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
+<polyline points="430,254 430,351" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <polyline points="109,351 109,400" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <polyline points="410,515 425,515 425,351" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <polyline points="720,222 738,222 738,351" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
@@ -52,6 +54,7 @@
 <polyline points="850,62 850,70" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#a50d37" stroke-width="3" stroke-dasharray="9 6"/>
 <polyline points="975,102 975,112 988,112 988,330 730,330 730,351" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#a50d37" stroke-width="3" stroke-dasharray="9 6"/>
 <polyline points="194,664 212,664 212,476 220,476" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#a50d37" stroke-width="3" stroke-dasharray="9 6"/>
+<polyline points="330,254 330,262" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#3f7aa6" stroke-width="3"/>
 <rect x="24" y="34" width="190" height="70" rx="6" fill="#e2dfd7" stroke="#a50d37" stroke-width="2.5"/>
 <text x="36" y="66.0" font-size="15" font-weight="600" fill="#17191b">Attacker</text>
 <text x="36" y="85.0" font-size="13" fill="#3c4045">often far away, online</text>
@@ -76,7 +79,7 @@
 <circle cx="667" cy="141.0" r="10" fill="#8f5200"/>
 <text x="667" y="145.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1d1406">3</text>
 <rect x="740" y="128" width="240" height="26" rx="6" fill="#e2dfd7" stroke="#8f5200" stroke-width="2" stroke-dasharray="7 4"/>
-<text x="752" y="146.0" font-size="15" font-weight="600" fill="#17191b">Log store · 12 months</text>
+<text x="752" y="146.0" font-size="15" font-weight="600" fill="#17191b">Historian copy + logs</text>
 <circle cx="967" cy="141.0" r="10" fill="#8f5200"/>
 <text x="967" y="145.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1d1406">3</text>
 <rect x="24" y="190" width="190" height="64" rx="6" fill="#e2dfd7" stroke="#3c4045" stroke-width="1.5"/>
@@ -90,6 +93,11 @@
 <rect x="240" y="190" width="200" height="64" rx="6" fill="#e2dfd7" stroke="#3c4045" stroke-width="1.5"/>
 <text x="252" y="219.0" font-size="15" font-weight="600" fill="#17191b">Controller (PLC)</text>
 <text x="252" y="238.0" font-size="13" fill="#3c4045">pump logic · secret probes</text>
+<rect x="240" y="262" width="180" height="50" rx="6" fill="#e2dfd7" stroke="#a50d37" stroke-width="2.5"/>
+<text x="252" y="284.0" font-size="15" font-weight="600" fill="#17191b">Engineering PC</text>
+<text x="252" y="303.0" font-size="13" fill="#3c4045">programs the PLC</text>
+<circle cx="407" cy="275" r="9" fill="#a50d37"/>
+<text x="407" y="279" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">!</text>
 <rect x="470" y="190" width="250" height="64" rx="6" fill="#e2dfd7" stroke="#3c4045" stroke-width="1.5"/>
 <text x="482" y="219.0" font-size="15" font-weight="600" fill="#17191b">Detector</text>
 <text x="482" y="238.0" font-size="13" fill="#3c4045">physics + network → advice</text>
@@ -210,7 +218,7 @@
 <rect x="8" y="884" width="26" height="14" fill="#e2dfd7" stroke="#a50d37" stroke-width="2"/>
 <text x="40" y="896" font-size="13" fill="#3c4045">Threat that exists today</text>
 <circle cx="247" cy="891" r="9" fill="#a50d37"/><text x="247" y="895" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">!</text>
-<text x="262" y="896" font-size="13" fill="#3c4045">Known weakness (see the topology report, risk review)</text>
+<text x="262" y="896" font-size="13" fill="#3c4045">Known weakness (see the topology report)   ·   SL1–SL4 = example IEC 62443 security levels</text>
 <text x="8" y="922" font-size="13" fill="#3c4045">The detector only advises the operator. It has no line to the overfill trip, which acts on its own (Brunei AI Security Policy Guidelines 9.2.2).</text>
 <text x="8" y="942" font-size="13" fill="#3c4045">Rules: API 2350 5th ed.; Cybersecurity Act Cap. 272 s16; CSB Code of Practice for CII v2.0 (2026) cl. 6.1, 6.2, 7.1, 10.2–10.4.</text>
 </svg>

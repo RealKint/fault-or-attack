@@ -210,3 +210,11 @@ What this shows:
 - **With the check and a hard-wired backup sensor, every run is caught before the overflow.** Without sensor B, the check can only use the high-level switch, which trips when the tank is already full, so it names the attack but too late to stop the spill. Backup sensor B is not optional against this attacker.
 - **The check does not break anything else.** Over the full evaluation (20 seeds, both plants) it raised no false alarms (0 in 10 healthy hours per plant) and changed no correct call to a wrong one. It improved the overall score from 1433/1440 to 1439/1440 on the simple plant and from 1303/1440 to 1341/1440 on the realistic plant, mostly because the replay-with-fresh-noise attack is now caught more often (realistic plant: 64/120 to 101/120). It was then switched on by default, and the README, the saved evaluations, the dashboard and the website were refreshed with the new numbers.
 - **Limit**: an attacker who can also reach backup sensor B (physical access, an insider, or a shared vendor weakness) defeats this check. Independence of sensor B is the whole defence.
+
+### Map changes after comparing with the oil and gas OT topology reference (23 November 2026)
+Checked against a reference on real oil and gas control network layouts (Purdue, ISA-95, IEC 62443 zones and conduits, SIS separation; sources NIST SP 800-82r3, CISA, Cisco/Schneider, Dragos). Five changes:
+1. **Engineering PC** added in the control room as a threat box with a known-weakness marker: it holds the keys to the controllers, and VOLTZITE and AZURITE target engineering workstations.
+2. The DMZ log store is now **"Historian copy + logs"**: the plant pushes data out, office users read only the copy (CISA's push-out, pull-from-the-middle rule).
+3. The safety layer's wiring to the detector is labelled **"status only"**, as CISA and NIST recommend for SIS links.
+4. Each zone carries an **example IEC 62443 security level** (office SL1, DMZ and control room SL2, field network and plant SL3, safety layer SL4). A real site sets its own from a risk assessment.
+5. The field network is marked **"Modbus: no authentication"**. NIST notes many Level 0 devices cannot be authenticated and encryption blinds network monitors, which is why physics-based checks matter: they work whether or not the traffic is encrypted.
