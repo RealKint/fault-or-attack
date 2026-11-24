@@ -135,6 +135,21 @@ The slow-balance check is the tank version of **computational pipeline monitorin
 
 This matches a gap regulators are now naming. Australia's 2026 independent review of its critical-infrastructure law found the regime too cyber-heavy, saying it "neglects physical security, personnel security, and all-hazards supply chain". It also asked for physical threat vectors such as drones, and OT cybersecurity, to be examined. Fault or Attack answers FAULT, ATTACK or PHYSICAL in one system.
 
+## What the control room does next: the incident playbook
+
+[`docs/Brunei OT Incident Playbook.md`](<docs/Brunei OT Incident Playbook.md>) is a one-page plan for a Brunei control room: when to escalate, whether to isolate or keep running, the order to restore systems in, and who to report to (BruCERT, the Commissioner of Cybersecurity, SHENA, the Petroleum Authority). Each detector answer leads to a row in it:
+
+| Detector says | Playbook |
+|---|---|
+| FAULT, with a clear cause | Maintenance as normal (section 1) |
+| FAULT soon after a new device, a foreign write or an office IT incident | Treat as ATTACK until ruled out (section 1); the detector already does this |
+| ATTACK | Safe state and call the incident team (section 1); isolate or shut down by the table in section 2; report to BruCERT and, for critical infrastructure, the Commissioner (section 4) |
+| IT (office IT hit, plant fine) | Keep running and cut the IT-OT link (sections 1 and 2) |
+| PHYSICAL | Site security; SHENA and the Petroleum Authority for safety or spill incidents; a bypassed safety trip under Directive No. 01/2021 (section 4) |
+| UNKNOWN | Field-check the real level within 15 minutes, then escalate (section 1) |
+
+The playbook is a snapshot of a shared document; it is a student proposal, not legal advice.
+
 ## Known limits
 
 Physical side, found by the deeper tests:
