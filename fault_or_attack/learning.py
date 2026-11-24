@@ -106,5 +106,5 @@ def _learn_from_normal_uncached(cfg: Config, hours: int = 3) -> Config:
             k += 1
     return replace(cfg, flatline_ticks=max(cfg.flatline_ticks, longest_flat + 2),
                    replay_match=max(cfg.replay_match, longest_repeat + 2),
-                   flat_runs_limit=max(2, most_freezes + 1),
+                   flat_runs_limit=max(2, most_freezes + 2),
                    link_limit=(lowest_link - 0.35) if cfg.control == "pid" else -1.0)

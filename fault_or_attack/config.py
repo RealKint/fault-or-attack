@@ -65,7 +65,7 @@ class Config:
     # --- detector settings ---
     window: int = 10              # most checks look at the last this-many seconds
     replay_match: int = 8         # this many readings repeated exactly = replay
-    replay_confirm: int = 4       # ... and the match must keep following the same recording this many seconds in a row
+    replay_confirm: int = 5       # ... and the match must keep following the same recording this many seconds in a row
     flatline_ticks: int = 5       # this many identical readings = stuck sensor
     fall_limit: float = 1.2       # a fall bigger than this per tick, while the pump fills, is impossible
     roughness_limit: float = 0.9  # mass-balance error jumping around more than this = forged data

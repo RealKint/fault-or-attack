@@ -1,16 +1,4 @@
 {
- "5033c3545e84d412": {
-  "flatline_ticks": 10,
-  "replay_match": 10,
-  "flat_runs_limit": 3,
-  "link_limit": 0.3511958639663354
- },
- "74bf1253b2567e35": {
-  "flatline_ticks": 10,
-  "replay_match": 10,
-  "flat_runs_limit": 3,
-  "link_limit": 0.3511958639663354
- },
  "40b1f9d74b1ba52e": {
   "flatline_ticks": 10,
   "replay_match": 10,
@@ -40,5 +28,23 @@
   "replay_match": 10,
   "flat_runs_limit": 3,
   "link_limit": 0.3511958639663354
+ },
+ "a6f836aaee951c08": {
+  "flatline_ticks": 10,
+  "replay_match": 10,
+  "flat_runs_limit": 3,
+  "link_limit": 0.3511958639663354
+ },
+ "ede11d7566e42626": {
+  "flatline_ticks": 10,
+  "replay_match": 10,
+  "flat_runs_limit": 3,
+  "link_limit": 0.3511958639663354
+ },
+ "268623f8d0fb2d6e": {
+  "flatline_ticks": 9,
+  "replay_match": 10,
+  "flat_runs_limit": 4,
+  "link_limit": 0.3659623204601481
  }
 }

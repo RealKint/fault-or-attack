@@ -611,12 +611,18 @@ class FaultOrAttackDetector:
         n = cfg.flatline_ticks
         tail = [r.sensor for r in self.h[-n:]]
         if len(tail) == n and None not in tail and len(set(tail)) == 1:
-            if cfg.quantize and self.flat_run < 2 * n:
-                # A rounded sensor can sit on one value by chance while the tank is balanced. Only call it stuck
-                # early if the valve and outflow say the level should have moved by more than a rounding step.
-                should_move = sum(self._expected_change(r) for r in self.h[-n:-1] if r.outflow is not None)
-                if abs(should_move) < 3 * cfg.quantize:
+            if cfg.control == "pid" and cfg.probe and cfg.active_probe and self.flat_run < 3 * n:
+                # A rounded sensor can sit on one value by chance. Challenge it first: ask for a probe (the valve
+                # closes briefly, so the real level dips) and call it stuck only if it stays flat right through.
+                stretch = self.h[-self.flat_run:]
+                first = next((i for i, r in enumerate(stretch) if r.probe), None)
+                if first is None or len(stretch) - first < cfg.pid_probe_len + cfg.probe_tail + 2:
+                    if first is None and not self.h[-1].probe:
+                        self.want_probe = True
                     return None
+                return self._v("FAULT", "Sensor stuck",
+                               f"Sensor A has reported exactly {tail[0]:.1f}% for {self.flat_run} seconds, even through "
+                               "a probe that made the real level dip. A live sensor would have followed it.")
             return self._v("FAULT", "Sensor stuck",
                            f"Sensor A has reported exactly {tail[0]:.1f}% for {self.flat_run} seconds. A live sensor "
                            "always has some noise.")
