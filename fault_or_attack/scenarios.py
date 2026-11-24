@@ -193,7 +193,30 @@ PHYSICAL_SCENARIOS: dict[str, ScenarioInfo] = {
 # so no gate or badge record exists.
 SECOND_EVENTS = ("theft", "theft_fence", "corrosion", "drone", "water", "b_fail")
 
-KNOWN_SCENARIOS: dict[str, ScenarioInfo] = {**SCENARIOS, **STRESS_ATTACKS, **PHYSICAL_SCENARIOS}
+# Office IT incidents (the Colonial Pipeline question): ransomware in the office, and the control room must decide
+# whether the plant can keep running. kind "IT" = plant proven fine: keep running and cut the IT-OT link.
+IT_SCENARIOS: dict[str, ScenarioInfo] = {
+    "it_hit": ScenarioInfo(
+        "Office IT hit, plant fine", "Cyberattack on office IT only",
+        "Ransomware locks the office computers (billing, scheduling). The security team raises an IT incident. "
+        "Nothing reaches the control network.",
+        "Plant physics stays normal, no new device joins the control network and nothing foreign writes to the "
+        "controller, so the detector says the plant is fine: keep running and cut the IT-OT link.",
+        kind="IT"),
+    "it_spread": ScenarioInfo(
+        "Office IT hit that spreads", "Cyberattack moving from IT to OT",
+        "The same ransomware alert, then a never-seen-before device appears on the control network a minute later "
+        "and starts writing commands to the controller.",
+        "The new device after an IT incident is treated as the attack reaching the plant; the foreign writes confirm it.",
+        kind="ATTACK"),
+    "it_fault": ScenarioInfo(
+        "Office IT hit, then a pump stops", "Fault or disguised attack?",
+        "An IT incident is open, and two minutes later the pump stops as if it had failed.",
+        "A fault this soon after an IT incident is treated as an attack until it is ruled out, as the playbook says.",
+        kind="ATTACK"),
+}
+
+KNOWN_SCENARIOS: dict[str, ScenarioInfo] = {**SCENARIOS, **STRESS_ATTACKS, **PHYSICAL_SCENARIOS, **IT_SCENARIOS}
 
 
 SMART_ATTACKS = ("smart_replay", "stealth")    # added after the detector was first tuned
@@ -227,6 +250,9 @@ RESPONSES: dict[str, str] = {
               "cybersecurity incident team. In Brunei, report it to Cyber Security Brunei through BruCERT "
               "(hotline 245 8001, cert@brucert.org.bn); owners of critical information infrastructure must also "
               "notify the Commissioner of Cybersecurity.",
+    "IT": "Keep the plant running: the control system shows no sign of the attack. Cut the link between office IT and "
+          "the control network (firewall or data diode), keep watching the detector, and run the plant from the "
+          "control room only. Report the IT incident to BruCERT. Reconnect office IT last, after it is clean.",
     "UNKNOWN": "Escalate: have an operator check the real level in the field before deciding.",
     "PHYSICAL": "Make the process safe and send site security with a technician to the spot; keep CCTV, door and badge "
                 "logs. Theft or sabotage: call the police. A safety or spill incident: report to SHENA and the Petroleum "

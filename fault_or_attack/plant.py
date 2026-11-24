@@ -79,6 +79,7 @@ class Record:
     bund: float = 0.0           # liquid collected in the bund (spill wall) around the tank, % of tank volume
     interface: float | None = None  # hard-wired water-interface probe: height of the water layer, % of tank
     wall: float | None = None   # hard-wired electrical-resistance corrosion probe: corrosion allowance left, %
+    it_alert: bool = False      # the office IT security team has an open incident (e.g. ransomware on office PCs)
 
 
 def screen_alarm(trusted: float, power_ok: bool, mismatch: bool, a_lost: bool, backup: bool,
@@ -272,6 +273,11 @@ class TankSimulator:
         cfg = self.cfg
         active = self.fault_active()
         f = self.fault if active else None      # the scenario that is acting on this tick
+        it_alert = self.fault in ("it_hit", "it_spread", "it_fault") and self.tick >= cfg.inject_at
+        if f in ("it_hit", "it_spread"):
+            f = None                            # office IT only: nothing happens to the plant itself
+        elif f == "it_fault":
+            f = "pump" if self.tick >= cfg.inject_at + 120 else None
         x = self.second if (self.second is not None and self.tick >= self.second_at) else None
         phys = {f, x}                           # physical events acting now (the main one and any second one)
         power_ok = f != "power"
@@ -383,6 +389,10 @@ class TankSimulator:
         new_device = 0
         if f in NEW_DEVICE_ATTACKS and not self.announced:
             self.announced, new_device = True, 1   # e.g. ARP spoofing reveals a never-seen-before MAC
+        spreading = self.fault == "it_spread" and self.tick >= cfg.inject_at + 60
+        if spreading and not self.announced:
+            self.announced, new_device = True, 1   # the attacker's foothold appears on the control network
+        writes = f == "command" or (self.fault == "it_spread" and self.tick >= cfg.inject_at + 90)
 
         # --- the physical plant ---
         metered_outflow = cfg.valve_stuck_flow if f == "valve" else cfg.demand
@@ -437,7 +447,7 @@ class TankSimulator:
             tick=self.tick, level=self.level, sensor=received, sensor_b=reading_b,
             pump_cmd=self.cmd_out, pump_flow=pump_really_runs, pump_feedback=feedback,
             outflow=metered_outflow if power_ok else None, packets=packets,
-            unknown_writes=1 if f == "command" else 0, new_devices=new_device, probe=probing,
+            unknown_writes=1 if writes else 0, new_devices=new_device, probe=probing,
             power_ok=power_ok, valve_cmd=valve_cmd, valve_pos=valve_pos,
             valve_real=self.valve_real if cfg.control == "pid" else None,
             # Float switches are independent of sensor A, so a forged or drifting reading cannot hide them.
@@ -449,6 +459,7 @@ class TankSimulator:
             bund=round(self.bund, 3),
             interface=self._quantize(max(0.0, self.water + 0.05 * (self.site_rng.random() - 0.5))) if power_ok else None,
             wall=round(self.wall + 0.1 * (self.er_rng.random() - 0.5), 2) if power_ok else None,
+            it_alert=it_alert,
         )
         self.tick += 1
         return rec

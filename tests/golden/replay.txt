@@ -19,8 +19,18 @@ FAULT OR ATTACK?
   Evidence over time:
     second  41: UNKNOWN Mass balance drifting
     second  43: ATTACK  False data injection
-    second  48: ATTACK  Replay attack
+    second  52: ATTACK  Replay attack
     second  71: UNKNOWN Mass balance drifting
     second  74: ATTACK  False data injection
-    second  77: ATTACK  Replay attack
+    second  82: ATTACK  Replay attack
+    second 101: UNKNOWN Mass balance drifting
+    second 104: ATTACK  False data injection
+    second 105: ATTACK  Replay attack
+    second 107: ATTACK  False data injection
+    second 112: ATTACK  Replay attack
+    second 131: UNKNOWN Mass balance drifting
+    second 134: ATTACK  False data injection
+    second 135: ATTACK  Replay attack
+    second 137: ATTACK  False data injection
+    second 142: ATTACK  Replay attack
 

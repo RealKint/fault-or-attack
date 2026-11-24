@@ -9,7 +9,7 @@ from statistics import mean
 from .config import Config
 from .detector import Verdict, diagnose, findings
 from .plant import Record, TankSimulator
-from .scenarios import ATTACKS, MODES, PHYSICAL_SCENARIOS, SCENARIOS, SMART_ATTACKS, STRESS_ATTACKS
+from .scenarios import ATTACKS, IT_SCENARIOS, MODES, PHYSICAL_SCENARIOS, SCENARIOS, SMART_ATTACKS, STRESS_ATTACKS
 
 
 SEVERITY = {"ok": 0, "warn": 1, "danger": 2}
@@ -430,3 +430,61 @@ def print_healthy(cfg: Config, hours: int) -> dict:
         print(f"  seed {seed}, hour {tick / 3600:.1f}: {call}")
     print()
     return {"hours": hours, "plant": cfg.control, "alarms": len(alarms), "by_rule": by_rule}
+
+
+def print_it(cfg: Config, seeds: int) -> dict:
+    """Office IT incidents: can the plant keep running?
+
+    Colonial Pipeline (May 2021) shut down its whole pipeline for about five days because ransomware hit office IT and
+    nobody could show the control system was untouched. Here the detector must (1) prove the plant fine when only IT
+    is hit, (2) escalate at once if the attack reaches the control network, and (3) treat a 'fault' during an open IT
+    incident as an attack until it is ruled out. 30-minute runs, the IT incident opens at 400 s."""
+    c = replace(cfg, ticks=1800, inject_at=400)
+    plant = "realistic plant (PID valve)" if c.control == "pid" else "simple plant (on/off pump)"
+    print()
+    print(f"Office IT incidents on the {plant}: {seeds} seeds x backup on/off, 30-minute runs")
+    header = f"{'Scenario':<34}{'Truth':<8}{'Correct':>9}{'Mean time':>11}   Final answer (most common)"
+    print(header)
+    print("-" * len(header))
+    out: dict = {"seeds": seeds, "plant": c.control, "rows": []}
+    right_all = total_all = 0
+    for key, info in IT_SCENARIOS.items():
+        right = total = 0
+        delays: list[int] = []
+        calls: dict[str, int] = {}
+        for seed in range(1, seeds + 1):
+            for backup in (False, True):
+                recs = TankSimulator(c, key, "permanent", backup, seed).run()
+                _, timeline = diagnose(recs, c)
+                total += 1
+                after = [v for v in timeline if v.tick >= c.inject_at]
+                last = after[-1] if after else None
+                call = f"{last.label}: {last.culprit}" if last else "nothing"
+                calls[call] = calls.get(call, 0) + 1
+                before = [v for v in timeline if v.tick < c.inject_at]
+                if info.kind == "IT":
+                    # Right = the plant is declared fine and nothing else is ever said.
+                    ok = not before and bool(after) and all(v.label == "IT" for v in after)
+                    hit = after[0] if ok else None
+                else:
+                    # Right = ATTACK is called, and the plant was never declared fine after the attack reached it.
+                    reached = c.inject_at + (60 if key == "it_spread" else 120)
+                    hit = next((v for v in after if v.label == "ATTACK" and v.tick >= reached), None)
+                    ok = not before and hit is not None and not any(v.label == "IT" for v in after if v.tick >= hit.tick)
+                right += ok
+                if ok and hit is not None:
+                    delays.append(hit.tick - (c.inject_at if info.kind == "IT" else reached))
+        right_all += right
+        total_all += total
+        avg = f"{mean(delays):.0f} s" if delays else "-"
+        top = max(calls, key=calls.get)
+        print(f"{info.name:<34}{info.kind:<8}{right:>5}/{total:<4}{avg:>11}   {top}")
+        out["rows"].append({"key": key, "name": info.name, "kind": info.kind, "right": right, "total": total,
+                            "delay": mean(delays) if delays else None, "top": top})
+    print("-" * len(header))
+    print(f"Overall: {right_all}/{total_all} correct. IT = office IT hit, plant proven fine: keep running and cut the "
+          "IT-OT link.")
+    print("Mean time: for 'plant fine', from the IT alert; for the attacks, from when the attack reached the plant.")
+    print()
+    out.update(right=right_all, total=total_all)
+    return out

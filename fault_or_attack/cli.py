@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 
 from .config import PROJECT_DIR, Config, realistic
-from .evaluation import (print_eval, print_healthy, print_mixed, print_physical, print_single, print_stress,
+from .evaluation import (print_eval, print_healthy, print_it, print_mixed, print_physical, print_single, print_stress,
                          print_sweep, print_table)
 from .hai_validation import HaiDataError, hai_main
 from .learning import learn_from_normal
@@ -48,6 +48,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--mixed", action="store_true",
                    help="physical side: two events at once, such as an attack with a theft or a drone during planned "
                         "work (--eval SEEDS, default 10)")
+    p.add_argument("--it", action="store_true",
+                   help="office IT incidents (the Colonial Pipeline question): IT hit with the plant fine, an IT hit "
+                        "that spreads to the control network, and a fault during an IT incident (--eval SEEDS, default 10)")
     p.add_argument("--healthy", type=int, metavar="HOURS",
                    help="count false alarms over this many healthy hours with rain, gas-detector tests, planned visits "
                         "and the daily temperature swing")
@@ -165,6 +168,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.mixed:
         print_mixed(cfg, args.eval or 10)
+        return
+
+    if args.it:
+        print_it(cfg, args.eval or 10)
         return
 
     if args.healthy is not None:

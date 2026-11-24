@@ -100,6 +100,8 @@ class Config:
     slow_window: int = 300        # slow-leak check: average the mass-balance error over this many seconds ...
     slow_limit: float = 0.01      # steady unexplained loss or gain above this (% of tank per second) = slow leak, theft or ingress
     bund_rise: float = 2.25       # bund up more than this within slow_window = product collecting there (heavy rain stays below)
+    it_window: int = 3600         # a fault or a new device within this long of an office IT incident = the attack spreading
+    it_confirm: int = 60          # plant checks must pass this long after an office IT incident to call the plant fine
     access_window: int = 600      # a symptom this soon after unplanned site access (no work order) = on-site cause
     damage_window: int = 5        # physical damage: several independent hard-wired signs within this many seconds
     gas_threshold: float = 1.0    # spill collected in the bund (% of tank) at which the gas detector alarms

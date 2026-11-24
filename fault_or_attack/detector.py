@@ -17,7 +17,8 @@ UNCONFIRMED = "unconfirmed"   # _sensor_live(): waited long enough, still no pro
 @dataclass
 class Verdict:
     tick: int
-    label: str        # "FAULT", "ATTACK", "PHYSICAL" (an on-site person or physical damage) or "UNKNOWN"
+    label: str        # "FAULT", "ATTACK", "PHYSICAL" (an on-site person or physical damage), "IT" (office IT hit,
+                      # plant proven fine: keep running) or "UNKNOWN"
     culprit: str      # best guess at what is going on
     reason: str       # the evidence, in words an operator understands
     mitre: str = ""   # MITRE ATT&CK for ICS techniques (attacks only)
@@ -73,6 +74,11 @@ class FaultOrAttackDetector:
         # Physical side
         self.last_unplanned = None        # last second someone came on site without a work order
         self.b_seen = False               # has backup sensor B ever reported (so its loss means something)
+        # Office IT incidents
+        self.it_since: int | None = None  # when the current office IT incident was first reported
+        self.last_it: int | None = None   # last second an office IT incident was open
+        self.writes_since_it = False      # any foreign write to the controller since the IT incident began
+        self.trouble_since_it = False     # any plant verdict at all since the IT incident began
 
     def observe(self, rec: Record) -> Verdict | None:
         cfg = self.cfg
@@ -88,6 +94,12 @@ class FaultOrAttackDetector:
             self.last_unplanned = rec.tick
         if rec.sensor_b is not None:
             self.b_seen = True
+        if rec.it_alert:
+            if self.it_since is None or rec.tick - (self.last_it or rec.tick) > 1:
+                self.it_since, self.writes_since_it, self.trouble_since_it = rec.tick, False, False
+            self.last_it = rec.tick
+        if rec.unknown_writes and self.it_since is not None:
+            self.writes_since_it = True
         if len(self.h) > 1 and rec.sensor is not None and rec.sensor == self.h[-2].sensor:
             self.flat_run += 1
         else:
@@ -100,16 +112,19 @@ class FaultOrAttackDetector:
         self._remember_window()
         if cfg.control == "pid":
             self._update_control_checks(rec)
-        for rule in (self._site_switches, self._physical_damage, self._power, self._network, self._foreign_writes, self._pump_without_command,
+        for rule in (self._site_switches, self._physical_damage, self._power, self._network, self._it_spread,
+                     self._foreign_writes, self._pump_without_command,
                      self._valve_tracking, self._control_law,
                      self._replay, self._probe_echo, self._ignores_valve, self._physics_violation,
                      self._hardwired_witness, self._pump_no_run,
                      self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance,
-                     self._slow_balance, self._wall_thinning, self._water_layer, self._bund_leak):
+                     self._slow_balance, self._wall_thinning, self._water_layer, self._bund_leak, self._it_only):
             verdict = rule()
             if verdict:
                 verdict = self._fuse(verdict)
                 verdict.also = self._second_finding(verdict)
+                if verdict.label != "IT" and self.it_since is not None:
+                    self.trouble_since_it = True
                 return verdict
         cusum = max(self.cusum_up, self.cusum_down)
         if cusum > cfg.cusum_h:
@@ -144,7 +159,13 @@ class FaultOrAttackDetector:
 
     def _fuse_network(self, v: Verdict) -> Verdict:
         """Cyber-physical fusion: a fault-like symptom that starts soon after a never-seen-before
-        device joins the control network is treated as an attack in disguise."""
+        device joins the control network, or while an office IT incident is open, is treated as an attack in disguise
+        until it is ruled out."""
+        if v.label == "FAULT" and self.last_it is not None and v.tick - self.last_it <= self.cfg.it_window:
+            return Verdict(v.tick, "ATTACK", "Disguised attack",
+                           f"It looks like '{v.culprit.lower()}', but an office IT incident has been open since second "
+                           f"{self.it_since}. Treat it as the attack reaching the plant until a technician rules that "
+                           "out on site.")
         if v.label != "FAULT" or self.last_new_device is None:
             return v
         since = v.tick - self.last_new_device
@@ -459,6 +480,31 @@ class FaultOrAttackDetector:
         if all(r.sensor is None for r in recent[-5:]) and traffic < 1.5:
             return self._v("FAULT", "Sensor link failure",
                            "Sensor A went completely silent while network traffic is normal: a cut cable or dead transmitter.")
+
+    def _it_spread(self):
+        """An office IT incident followed by a never-seen-before device on the control network: the attack is moving
+        from IT into the plant, even before it does anything."""
+        if self.it_since is None or self.last_new_device is None or self.last_new_device < self.it_since:
+            return None
+        if self.h[-1].tick - self.last_new_device > self.cfg.it_window:
+            return None
+        return self._v("ATTACK", "Attack spreading from office IT",
+                       f"An office IT incident opened at second {self.it_since}, and {self.last_new_device - self.it_since} s "
+                       "later a never-seen-before device joined the control network. Isolate the control network now.")
+
+    def _it_only(self):
+        """The Colonial Pipeline question: office IT is hit, so can the plant keep running? Yes, if for a full
+        minute every plant check has passed, no new device has joined the control network and nothing foreign has
+        written to the controller."""
+        r, cfg = self.h[-1], self.cfg
+        if not r.it_alert or self.it_since is None or r.tick - self.it_since < cfg.it_confirm:
+            return None
+        if self.trouble_since_it or self.writes_since_it or (self.last_new_device is not None and self.last_new_device >= self.it_since):
+            return None
+        return self._v("IT", "Office IT hit, plant fine",
+                       f"An office IT incident has been open for {r.tick - self.it_since} s. Since then every plant "
+                       "check has passed: the water balance closes, the sensors agree, no new device has joined the "
+                       "control network and nothing foreign has written to the controller. The plant is not affected.")
 
     def _foreign_writes(self):
         if self.h[-1].unknown_writes:

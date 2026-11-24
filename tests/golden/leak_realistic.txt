@@ -1,4 +1,4 @@
-Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 9 identical readings, replay after 10 repeated readings.
 
 Scenario: Leak   |   duration: permanent   |   backup sensor: off
 Truth:            FAULT (Process fault)
