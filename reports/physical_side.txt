@@ -15,7 +15,7 @@ Planned bypass for testing      NONE        20/20           20/20              -
 ---------------------------------------------------------------------------------------------------
 Overall: 200/200 correct. PHYSICAL = send site security; NONE = planned work, must stay silent.
 
-Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 9 identical readings, replay after 10 repeated readings.
 
 Physical side on the realistic plant (PID valve): 10 seeds x backup on/off, 30-minute runs
 Scenario                        Truth       Correct  Before the limit  Mean time   Most common call

@@ -21,8 +21,9 @@ The detector checks every reading against the tank's physics and the network, th
 | Test | Result |
 |---|---|
 | Simple plant, 1,440 runs | 99.9% right |
-| Realistic plant (PI valve) | 93.1% right |
-| Normal running, 20 hours | 0 false alarms. A longer check, 120 healthy hours per plant with rain, gas-detector tests, planned visits and the daily temperature swing: 0 on the simple plant, 9 on the realistic plant (7.5 per 100 hours, all from the older replay and stuck-sensor rules) |
+| Realistic plant (PI valve) | 93.0% right |
+| Normal running, 120 healthy hours per plant with rain, gas-detector tests, planned visits and the daily temperature swing | 0 false alarms on either plant |
+| Office IT hit (120 runs): plant fine, attack spreading to the control network, fault during the incident | 120 right |
 | Physical side: corrosion, wall thinning, water ingress, theft, tampering, drone damage, planned work (400 runs) | 400 right |
 | Physical side, two events at once (280 runs) | 200 right with both causes found; the 80 misses are the two theft cases listed under Known limits |
 | Smallest slow event caught every time (one-hour runs, random start) | corrosion leak or theft 0.01% of the tank per second (half a percent of normal flow), water ingress 0.005% |
@@ -94,6 +95,22 @@ python "FAULT OR ATTACK.py" --stress --realistic    # realistic plant
 
 An adaptive attacker (or AI agent) on a trusted device forges sensor A, the motor feedback and the valve position so that every networked signal agrees with physics. Without help the detector loses to it. A hard-wired witness check (backup sensor B and the high-level switch, on by default) catches it in every run before the tank overflows, when backup sensor B is fitted. `--stress` shows the result with the check off and on. Results and the risk review are in `reports/stress_consistent_forgery.txt` and the topology report.
 
+## Office IT hit: can the plant keep running?
+
+```bash
+python "FAULT OR ATTACK.py" --it        # add --realistic for the PID plant
+```
+
+In May 2021 ransomware hit Colonial Pipeline's office IT. The pipeline's control system was not touched, but nobody could prove that, so the company shut the whole pipeline for about five days. This test asks the detector the same question. When the office security team reports an IT incident, the detector watches the plant for a minute. If every plant check passes, no new device joins the control network and nothing foreign writes to the controller, it answers **IT: keep running, cut the IT-OT link**. If a never-seen-before device then appears on the control network, it says the attack is spreading (ATTACK) at once. A fault during the incident (here, the pump stopping two minutes in) is treated as an attack until a technician rules it out, as the incident playbook says. Results: 120 of 120 runs right over both plants (`reports/office_it_incidents.txt`); the "plant fine" answer comes 60 s after the alert.
+
+## Fewer false alarms on the realistic plant
+
+The realistic plant's sensor rounds to 0.1%, so over many hours its readings sometimes repeat an old stretch, or sit on one value, purely by chance. Over 120 healthy hours that caused 9 false alarms (one every 13 hours). Two changes fixed it, both based on how real problems behave:
+- **A replay keeps playing.** A recording matches the past again second after second; a chance repeat breaks at once. A replay is now called only after the match has followed the same recording for 5 seconds in a row (in 120 healthy hours a chance repeat never lasted that long).
+- **Challenge a flat sensor.** Before calling sensor A stuck, the controller runs a probe (the supply valve closes briefly, so the real level dips). A live sensor follows; a stuck one stays flat.
+
+Result: 0 false alarms in 120 healthy hours on both plants. Headline accuracy is unchanged on the simple plant and 93.0% on the realistic plant (was 93.1%).
+
 ## Physical side: corrosion, theft, tampering and damage
 
 ```bash
@@ -125,7 +142,7 @@ Physical side, found by the deeper tests:
 - **Theft with no access record.** Someone who climbs the fence leaves no gate or badge event, so a theft tap outside the bund looks like a slow leak outside the bund. It is still flagged within minutes and sends someone to walk the line, but as a FAULT. Perimeter sensors (fence vibration, CCTV analytics) would close this.
 - **Very slow events.** Losses under about 0.01% of the tank per second (0.005% for water ingress) are not caught within an hour; daily inventory reconciliation and inspections (API 653) remain the backstop.
 - **Rain plus theft.** Heavy rain raises the bund like a leak does; the detector only treats a rising bund as a leak when the gas detector also smells product, but a theft during a heavy shower has not been tested.
-- **False alarms on the realistic plant.** 7.5 per 100 healthy hours, all from the older replay and stuck-sensor rules, which find natural repeats in its rounded readings. Learning those limits from 24 healthy hours instead of 3 cut this only to 5 per 100 hours, so a better test for those rules is still needed.
+- **Slower stuck-sensor call on the realistic plant.** To stop false alarms, a flat reading is now challenged with a probe before it is called stuck. This costs about 10 seconds (26 s on average instead of 15) and two of the 120 stuck-sensor runs.
 - **Simulator only.** All physical results come from scenarios written for this project; none has been checked against a real leak or theft.
 
 Cyber side:

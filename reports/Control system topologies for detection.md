@@ -275,3 +275,11 @@ The physical side was built in one day and tested on one size of each scenario. 
 2. **Detection curve.** Each slow event at a range of sizes, starting at a random time in one-hour runs. The slow-balance limit was lowered from 0.03% to 0.01% of the tank per second after measuring that healthy five-minute averages never exceed 0.0036%. Now caught every time: corrosion leaks and theft from 0.01%/s, water ingress from 0.005%/s.
 3. **Healthy days.** 120 hours per plant with rain into the bund, gas-detector tests, planned visits and the daily temperature swing: no false alarms from the physical checks on either plant. The realistic plant raised 9 from the older replay and stuck-sensor rules (7.5 per 100 hours).
 4. **Two events at once.** The detector now reports a second, physical finding beside its main verdict, and two new hard-wired checks work without sensor A (the water-interface probe alone; the bund rising with the gas detector alarming, which rain cannot do). Five mixed cases were right in every run with both causes found. Two are limits, stated in the README: theft under cover of a work order, and theft by someone over the fence; both are called a slow leak.
+
+### Upgrade 2 built, and the realistic plant's false alarms fixed (24 November 2026)
+**Office IT hit, plant fine (rank 2) is now in the simulator** (`--it`, results in `reports/office_it_incidents.txt`). The plant gets a new input, an open office IT incident from the security team. Three scenarios, 20 runs each per plant, all 120 right:
+- Office IT hit, plant fine: after a minute with every plant check passing, no new device and no foreign writes, the answer is **IT: keep running, cut the IT-OT link**. This is the decision Colonial Pipeline could not make in 2021.
+- IT hit that spreads: a never-seen-before device on the control network after the IT alert is called an attack straight away.
+- A fault during the incident: treated as an attack until ruled out (playbook, escalation criteria).
+
+**False alarms.** The 120-hour test found 9 on the realistic plant (rounded readings repeating by chance). The replay rule now needs the match to keep following the same recording for 5 seconds, and the stuck rule challenges sensor A with a probe first. Now 0 in 120 hours on both plants; realistic headline 93.0% (was 93.1%); stuck sensors called about 10 seconds later on that plant.

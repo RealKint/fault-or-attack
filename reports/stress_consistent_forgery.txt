@@ -11,14 +11,14 @@ AI consistent forgery   on             on          60/60        0        0      
 Correct = called ATTACK after the attack began. Caught before overflow = correct, and before the real tank
 reached 99.5%. In transient and intermittent runs the attack may stop before the tank fills, so those count.
 
-Realistic plant: learned from 3 healthy hours -> stuck sensor after 10 identical readings, replay after 10 repeated readings.
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 9 identical readings, replay after 10 repeated readings.
 
 Stress test on the realistic plant (PID valve): an adaptive attacker who knows how the detector works
 over 20 seeds x 3 duration modes, scored separately from the headline accuracy
 Scenario                Witness check  Backup B    Correct  FAULT  UNKNOWN  nothing  Caught before overflow  Mean time
 ----------------------------------------------------------------------------------------------------------------------
 AI consistent forgery   off            off         13/60        0       28       19               12/60           33 s
-AI consistent forgery   off            on           7/60       18       35        0                7/60           18 s
+AI consistent forgery   off            on           7/60       11       42        0                7/60           18 s
 AI consistent forgery   on             off         32/60        0       28        0               12/60           34 s
 AI consistent forgery   on             on          60/60        0        0        0               60/60           14 s
 ----------------------------------------------------------------------------------------------------------------------

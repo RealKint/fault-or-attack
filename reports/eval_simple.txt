@@ -10,7 +10,7 @@ Valve stuck open        FAULT     120/120                   0.0 s   Valve stuck 
 Leak                    FAULT     120/120                  12.8 s   Leak or sensor drift
 Power loss              FAULT     120/120                   0.0 s   Power loss
 False data injection    ATTACK    120/120                   7.5 s   False data injection
-Replay attack           ATTACK    120/120                   8.3 s   False data injection
+Replay attack           ATTACK    120/120                   9.4 s   False data injection
 Replay + fresh noise *  ATTACK    119/120                   9.1 s   False data injection
 Stealthy spoof *        ATTACK    120/120                   5.5 s   Disguised attack
 Command injection       ATTACK    120/120                   0.0 s   Command injection

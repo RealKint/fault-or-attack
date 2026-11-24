@@ -1,0 +1,23 @@
+
+Office IT incidents on the simple plant (on/off pump): 10 seeds x backup on/off, 30-minute runs
+Scenario                          Truth     Correct  Mean time   Final answer (most common)
+-------------------------------------------------------------------------------------------
+Office IT hit, plant fine         IT         20/20         60 s   IT: Office IT hit, plant fine
+Office IT hit that spreads        ATTACK     20/20          0 s   ATTACK: Attack spreading from office IT
+Office IT hit, then a pump stops  ATTACK     20/20          3 s   ATTACK: Disguised attack
+-------------------------------------------------------------------------------------------
+Overall: 60/60 correct. IT = office IT hit, plant proven fine: keep running and cut the IT-OT link.
+Mean time: for 'plant fine', from the IT alert; for the attacks, from when the attack reached the plant.
+
+Realistic plant: learned from 3 healthy hours -> stuck sensor after 9 identical readings, replay after 10 repeated readings.
+
+Office IT incidents on the realistic plant (PID valve): 10 seeds x backup on/off, 30-minute runs
+Scenario                          Truth     Correct  Mean time   Final answer (most common)
+-------------------------------------------------------------------------------------------
+Office IT hit, plant fine         IT         20/20         60 s   IT: Office IT hit, plant fine
+Office IT hit that spreads        ATTACK     20/20          0 s   ATTACK: Attack spreading from office IT
+Office IT hit, then a pump stops  ATTACK     20/20          1 s   ATTACK: Disguised attack
+-------------------------------------------------------------------------------------------
+Overall: 60/60 correct. IT = office IT hit, plant proven fine: keep running and cut the IT-OT link.
+Mean time: for 'plant fine', from the IT alert; for the attacks, from when the attack reached the plant.
+
