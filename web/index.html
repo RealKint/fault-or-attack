@@ -828,6 +828,23 @@ footer .deep .mark span { background: var(--deep); }
         <p class="caption">Contact details are from brucert.org.bn and csb.gov.bn, checked on 11 November 2026. The reporting duty is in section 16 of the Cybersecurity Order, 2023 (now the Cybersecurity Act, Chapter 272). This is a student project, not legal advice: check the official sites before relying on it.</p>
       </div>
     </div>
+    <div class="panel rise" style="--i:3;margin-top:8px">
+      <h3>The incident playbook: what each answer means for the control room</h3>
+      <p>A one-page plan for a Brunei oil and gas control room. Safety comes first: the overfill trip and safety system act on their own and are never switched off to keep production going. After that, stop only what the evidence requires. Colonial Pipeline stopped in about 15 minutes but took about 5 days to restart.</p>
+      <div class="scroll"><table class="plain">
+        <thead><tr><th>Detector says</th><th>What the control room does</th><th>Within</th></tr></thead>
+        <tbody>
+          <tr><td><b>FAULT</b>, clear cause</td><td>Maintenance as normal: a work order and a technician.</td><td>Normal</td></tr>
+          <tr><td><b>FAULT</b> soon after a new device, a foreign write or an office IT incident</td><td>Treat it as an attack until it is ruled out. The detector already does this.</td><td>Immediately</td></tr>
+          <tr><td><b>ATTACK</b></td><td>Make the process safe and call the incident team. If hard-wired gauges and manual control work, isolate the control network and run critical parts by hand; if not, a controlled shutdown. Keep the evidence, then report to BruCERT and, for critical sites, the Commissioner.</td><td>Immediately</td></tr>
+          <tr><td><b>IT</b>: office IT hit, plant fine</td><td>Keep running. Cut the link between office IT and the control network and keep watching. Any later FAULT counts as an attack.</td><td>Within 1 minute of the IT alert</td></tr>
+          <tr><td><b>PHYSICAL</b></td><td>Make the process safe and send site security with a technician. Theft or sabotage: the police. Safety or spill: SHENA and the Petroleum Authority. A safety trip bypassed with no work order is reported under Directive No. 01/2021.</td><td>Immediately</td></tr>
+          <tr><td><b>UNKNOWN</b></td><td>Check the real level in the field with an independent gauge; escalate if it is still unexplained.</td><td>15 minutes</td></tr>
+        </tbody>
+      </table></div>
+      <p><b>Restoring after an attack</b> is an engineering check, not "wipe and reinstall". In order: network and security equipment, OT servers and accounts, engineering PC and screens from clean images, controller programs checked against signed backups, the detector and historian, and the link to office IT last. <b>Report once:</b> one incident record, the same facts to every body that needs them. <b>Practise once a year</b> with at least two set objectives (our recommendation).</p>
+      <p class="caption">Full playbook, with sources: <a href="https://github.com/RealKint/fault-or-attack/blob/main/docs/Brunei%20OT%20Incident%20Playbook.md" style="color:inherit">Brunei OT Incident Playbook</a> (in the project files, <code>docs/</code>). A student proposal, not legal advice.</p>
+    </div>
   </div>
 
   <div class="deep on-field">
