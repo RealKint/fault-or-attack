@@ -90,6 +90,8 @@ class Config:
     flat_runs_limit: int = 0      # ... and this many in a minute is a fault (0 = off; learned from normal data)
     law_limit: float = 0.5        # PID mode: valve command this far from what the control law gives
     fusion_window: int = 120      # a fault-like symptom this soon after a new network device = attack
+    confidence_steady: int = 10   # a single family of evidence gets Medium confidence after this many steady seconds
+    episode_gap: int = 120      # this many quiet seconds (no verdict at all) end a problem; the next one is new
     # Hard-wired witness check: catches an attacker who forges every networked signal consistently, since
     # only hard-wired witnesses disagree. On since 23 Nov 2026 (--stress compares it on and off).
     witness_check: bool = True

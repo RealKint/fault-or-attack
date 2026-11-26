@@ -132,6 +132,67 @@ class TestDetector(unittest.TestCase):
                     self.assertTrue(_verdict_ok(key, verdict, cfg),
                                     f"got {verdict.label if verdict else 'nothing'} for {SCENARIOS[key].name}")
 
+    def test_attack_is_never_called_a_fault_while_it_goes_on(self):
+        # A long stealthy spoof used to be called FAULT (Sensor stuck) once the new network device was more than
+        # fusion_window seconds old, which would send a technician to an attack. Fusion now looks at when the
+        # problem BEGAN, not at when the latest symptom showed.
+        from dataclasses import replace
+        from fault_or_attack.detector import FaultOrAttackDetector
+        for plant, base in (("simple", Config()), ("realistic", realistic(Config()))):
+            for key in ("stealth", "spoof"):
+                with self.subTest(plant=plant, attack=key):
+                    cfg = replace(base, ticks=600)
+                    det = FaultOrAttackDetector(cfg)
+                    labels = {v.label for r in TankSimulator(cfg, key, "permanent", True, 1).run()
+                              if (v := det.observe(r))}
+                    self.assertIn("ATTACK", labels)
+                    self.assertNotIn("FAULT", labels)
+
+    def test_tampered_sensor_b_is_not_trusted(self):
+        # An insider rewires sensor B to agree with forged readings. B used to "confirm" them, so the detector called
+        # it FAULT (Leak, "both sensors agree") and, ten minutes on, forgot the site visit. It must stay PHYSICAL.
+        from dataclasses import replace
+        from fault_or_attack.detector import FaultOrAttackDetector
+        cfg = replace(Config(), ticks=1200, inject_at=120)
+        det = FaultOrAttackDetector(cfg)
+        labels = {v.label for r in TankSimulator(cfg, "tamper_b", "permanent", True, 1, disturbances=True).run()
+                  if (v := det.observe(r)) and v.label != "UNKNOWN"}
+        self.assertEqual(labels, {"PHYSICAL"})
+
+    def test_confidence_never_changes_an_answer(self):
+        # Grading runs extra checks after the answer is decided; it must put back their memory exactly.
+        from fault_or_attack.detector import FaultOrAttackDetector
+        for plant, cfg in (("simple", Config()), ("realistic", realistic(Config()))):
+            for key in ("replay", "smart_replay", "stealth", "stuck", "drift", "leak"):
+                with self.subTest(plant=plant, scenario=key):
+                    records = TankSimulator(cfg, key, "intermittent", True, 2).run()
+                    graded = FaultOrAttackDetector(cfg)
+                    plain = FaultOrAttackDetector(cfg)
+                    plain._grade = lambda *args: None
+                    for r in records:
+                        a, b = graded.observe(r), plain.observe(r)
+                        self.assertEqual(None if a is None else (a.label, a.culprit, a.reason),
+                                         None if b is None else (b.label, b.culprit, b.reason), f"second {r.tick}")
+
+    def test_confidence_levels(self):
+        from fault_or_attack.detector import FaultOrAttackDetector
+
+        def levels(key, backup):
+            det = FaultOrAttackDetector(Config())
+            return [v for r in TankSimulator(Config(), key, "permanent", backup, 1).run() if (v := det.observe(r))]
+
+        # A stealthy spoof: physics AND the network log agree -> High, with both shown.
+        high = [v for v in levels("stealth", True) if v.label == "ATTACK" and v.confidence == "High"]
+        self.assertTrue(high)
+        self.assertEqual(sorted(e.split(":")[0] for e in high[0].evidence), ["Network", "Physics"])
+        # A leak with no backup sensor: one family. Low when it first appears, Medium once steady, never High.
+        leak = [v for v in levels("leak", False) if v.label == "FAULT"]
+        self.assertEqual(leak[0].confidence, "Low")
+        self.assertIn("Medium", {v.confidence for v in leak})
+        self.assertNotIn("High", {v.confidence for v in leak})
+        # Early warnings are always Low.
+        self.assertTrue(all(v.confidence == "Low" for v in levels("leak", False) if v.label == "UNKNOWN"))
+
     def test_healthy_plants_raise_no_alarm(self):
         for plant, cfg in (("simple", Config()), ("realistic", learn_from_normal(realistic(Config())))):
             for backup in (False, True):

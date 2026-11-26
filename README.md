@@ -41,6 +41,7 @@ python "FAULT OR ATTACK.py" --all                 # every fault and attack
 python "FAULT OR ATTACK.py" --attack replay       # one attack and the detector's verdict
 python "FAULT OR ATTACK.py" --fault leak          # one fault
 python "FAULT OR ATTACK.py" --mystery             # live demo of a hidden scenario
+python "FAULT OR ATTACK.py" --admin               # control-room console in your browser
 ```
 
 The simulator and detector need only the standard library. For pictures and the live demo, install matplotlib:
@@ -48,6 +49,34 @@ The simulator and detector need only the standard library. For pictures and the 
 ```bash
 pip install -r requirements.txt
 ```
+
+## The admin console: the control-room screen
+
+```bash
+python "FAULT OR ATTACK.py" --admin                 # simple plant; open http://127.0.0.1:8800
+python "FAULT OR ATTACK.py" --admin --realistic     # PI-valve plant
+```
+
+Everything above runs a scenario and prints a verdict. The console is what an operator would actually sit in front of. The detector runs live, one reading per second, and the screen shows:
+- **The answer now.** A banner that reads NORMAL, or FAULT, ATTACK, PHYSICAL, IT or UNKNOWN with the evidence, what to do, the playbook section and the MITRE ATT&CK for ICS technique.
+- **The plant.** The tank, a trend of sensors A and B with the pump or valve, and the readings the detector uses: process, control network (packets, new devices, foreign writes) and the hard-wired site signals.
+- **Incidents.** The detector repeats its verdict every second; the console turns that into one incident per problem. An operator acknowledges it, adds notes and resolves it with an outcome (confirmed attack, confirmed fault, false alarm...). Closing an ATTACK as anything else needs a note saying how it was ruled out. An early warning (UNKNOWN) is closed into the firm answer that explains it.
+- **An audit log.** Every change is written with the time and the operator's name to `admin_logs/` (one JSON line per event), and the incident list downloads as CSV for the shift report.
+- **A lab panel** (simulated plant only) for drills: start any fault, attack, physical or office-IT scenario, permanent, transient or intermittent. A *hidden* drill keeps the scenario secret until the instructor ends it; then the console says what it was and whether the detector was right, and resets the plant. The instructor can also change the speed, pause, and show the real level the control room cannot see.
+
+Each lab scenario was run as a drill on both plants (52 drills); the detector's answer was right in all 52.
+
+**Recorded data instead of the simulator.** A CSV of readings plays back through the same screen:
+
+```bash
+python "FAULT OR ATTACK.py" --make-sample spoof.csv --attack spoof --ticks 300 --inject-at 120
+python "FAULT OR ATTACK.py" --admin --replay-csv spoof.csv
+python "FAULT OR ATTACK.py" --admin --replay-csv historian.csv --columns sensor=LIT101,pump_cmd=P101
+```
+
+Only a `sensor` column (sensor A, in %) is required. The others the detector can use are `tick, sensor_b, pump_cmd, pump_feedback, outflow, packets, unknown_writes, new_devices, probe, power_ok, valve_cmd, valve_pos, switch_high, switch_low, tamper, door, work_order, bypass, gas_alarm, bund, interface, wall, it_alert`; a missing column means "no signal" (for example, no network evidence). Add `--realistic` for a valve-controlled plant. This is the input a Modbus or historian connection would feed (see `research_notes/Ideas for later/Test on real Modbus traffic.md`).
+
+**Sharing it on a network.** It listens on this computer only. `--host 0.0.0.0 --password SECRET` lets other computers in the room open it; it refuses to do that without a password. The password travels unencrypted (plain HTTP), so use it only on a lab network you trust.
 
 ## The website
 
@@ -80,6 +109,7 @@ The real-data test is skipped when the HAI files are not downloaded.
 ```
 FAULT OR ATTACK.py     starter: menu and command-line options
 fault_or_attack/       the program: plant, detector, scenarios, evaluation, plots, web export
+fault_or_attack/admin/ the control-room console: data sources, incidents, web server and page
 tests/                 unit tests and saved expected outputs
 web/                   the website
 reports/               research reports and saved evaluation runs
@@ -159,6 +189,11 @@ Physical side, found by the deeper tests:
 - **Rain plus theft.** Heavy rain raises the bund like a leak does; the detector only treats a rising bund as a leak when the gas detector also smells product, but a theft during a heavy shower has not been tested.
 - **Slower stuck-sensor call on the realistic plant.** To stop false alarms, a flat reading is now challenged with a probe before it is called stuck. This costs about 10 seconds (26 s on average instead of 15) and two of the 120 stuck-sensor runs.
 - **Simulator only.** All physical results come from scenarios written for this project; none has been checked against a real leak or theft.
+
+Admin console:
+- **No live plant connection yet.** It runs the simulator or plays back a CSV. A Modbus or historian connection that writes the same columns is the next step; until then, recorded data is replayed, not watched as it happens.
+- **One shared password, plain HTTP.** Fine for a lab or a demo, not for a real control network, which would need named accounts, HTTPS and the site's own access control.
+- **Long runs.** The detector keeps every reading it has seen. Every 6 hours, while nothing is wrong, the console swaps in a fresh detector that has re-read the last hour; the page pauses for a few seconds while it does.
 
 Cyber side:
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import correlation, mean, median, pstdev
 
 from .config import Config
@@ -12,6 +12,23 @@ from .scenarios import ATTACK_TECHNIQUES, RESPONSES
 
 
 UNCONFIRMED = "unconfirmed"   # _sensor_live(): waited long enough, still no probe confirmed sensor A
+
+# Confidence: each check belongs to one family of evidence. Families are independent: fooling one does not fool
+# another (a forged sensor A fools every physics check at once, but not a hard-wired switch or the network log).
+PHYSICS, WITNESS, NETWORK, CONTROL = "Physics", "Hard-wired", "Network", "Control"
+FAMILY = {
+    "_physics_violation": PHYSICS, "_mass_balance": PHYSICS, "_flatline": PHYSICS, "_freezing": PHYSICS,
+    "_slow_balance": PHYSICS, "_outflow_high": PHYSICS, "_replay": PHYSICS,
+    "_site_switches": WITNESS, "_physical_damage": WITNESS, "_power": WITNESS, "_hardwired_witness": WITNESS,
+    "_drift_vs_backup": WITNESS, "_wall_thinning": WITNESS, "_water_layer": WITNESS, "_bund_leak": WITNESS,
+    "_network": NETWORK, "_it_spread": NETWORK, "_foreign_writes": NETWORK, "_it_only": NETWORK,
+    "_pump_without_command": CONTROL, "_valve_tracking": CONTROL, "_control_law": CONTROL,
+    "_probe_echo": CONTROL, "_ignores_valve": CONTROL, "_pump_no_run": CONTROL,
+}
+# Checks that keep memory between seconds. Grading runs checks that normally would not run that second, so it saves
+# these first and puts them back afterwards: working out the confidence must never change a later verdict.
+_CHECK_MEMORY = ("replay_streak", "replay_from", "link_low", "want_probe", "anomaly_since", "anomaly_last",
+                 "last_request")
 
 
 @dataclass
@@ -24,6 +41,9 @@ class Verdict:
     mitre: str = ""   # MITRE ATT&CK for ICS techniques (attacks only)
     action: str = ""  # what the control room should do next
     also: "Verdict | None" = None   # a second, separate physical finding at the same moment (e.g. a leak during an attack)
+    confidence: str = ""            # "High", "Medium" or "Low" (see FaultOrAttackDetector._grade)
+    evidence: list[str] = field(default_factory=list)    # "Family: what it saw", one per family that agrees
+    conflicts: list[str] = field(default_factory=list)   # families pointing to a different answer
 
     def __post_init__(self) -> None:
         if not self.mitre and self.label == "ATTACK":
@@ -54,6 +74,11 @@ class FaultOrAttackDetector:
         self.replay_streak = 0                    # seconds in a row the match kept following the same recording
         self.cusum_up = self.cusum_down = 0.0     # two-sided CUSUM of the mass-balance error
         self.last_new_device: int | None = None   # when a never-seen-before device last appeared
+        self.episode_start: int | None = None     # second the current problem began (first verdict after quiet)
+        self.last_alarm: int | None = None        # last second the detector said anything at all
+        self.steady_label: str | None = None      # confidence: the firm answer being given ...
+        self.steady_since = 0                     # ... since this second ...
+        self.steady_last = -10_000                # ... last given at this second
         self.probe_results: deque[bool] = deque(maxlen=3)   # True = the probe was NOT echoed
         self.pending_probe: tuple[int, int] | None = None   # PID mode: probe waiting for its dip to show
         self.strong_miss = False                  # PID mode: the latest probe missed by a wide margin
@@ -74,6 +99,7 @@ class FaultOrAttackDetector:
         # Physical side
         self.last_unplanned = None        # last second someone came on site without a work order
         self.b_seen = False               # has backup sensor B ever reported (so its loss means something)
+        self.b_tampered: int | None = None   # second a tamper switch opened with no work order: B is not trusted since
         # Office IT incidents
         self.it_since: int | None = None  # when the current office IT incident was first reported
         self.last_it: int | None = None   # last second an office IT incident was open
@@ -92,6 +118,11 @@ class FaultOrAttackDetector:
             self.last_new_device = rec.tick
         if rec.door and not rec.work_order:
             self.last_unplanned = rec.tick
+        if rec.tamper and not rec.work_order:
+            # Someone opened an instrument housing with no work order: they were on site, and sensor B can no
+            # longer vouch for anything until a technician has checked it (here: until the detector is restarted).
+            self.last_unplanned = rec.tick
+            self.b_tampered = rec.tick
         if rec.sensor_b is not None:
             self.b_seen = True
         if rec.it_alert:
@@ -112,32 +143,108 @@ class FaultOrAttackDetector:
         self._remember_window()
         if cfg.control == "pid":
             self._update_control_checks(rec)
-        for rule in (self._site_switches, self._physical_damage, self._power, self._network, self._it_spread,
-                     self._foreign_writes, self._pump_without_command,
-                     self._valve_tracking, self._control_law,
-                     self._replay, self._probe_echo, self._ignores_valve, self._physics_violation,
-                     self._hardwired_witness, self._pump_no_run,
-                     self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance,
-                     self._slow_balance, self._wall_thinning, self._water_layer, self._bund_leak, self._it_only):
-            verdict = rule()
-            if verdict:
-                verdict = self._fuse(verdict)
+        rules = (self._site_switches, self._physical_damage, self._power, self._network, self._it_spread,
+                 self._foreign_writes, self._pump_without_command,
+                 self._valve_tracking, self._control_law,
+                 self._replay, self._probe_echo, self._ignores_valve, self._physics_violation,
+                 self._hardwired_witness, self._pump_no_run,
+                 self._outflow_high, self._flatline, self._freezing, self._drift_vs_backup, self._mass_balance,
+                 self._slow_balance, self._wall_thinning, self._water_layer, self._bund_leak, self._it_only)
+        for i, rule in enumerate(rules):
+            raw = rule()
+            if raw:
+                self._note_alarm(rec.tick)
+                verdict = self._fuse(raw)
                 verdict.also = self._second_finding(verdict)
                 if verdict.label != "IT" and self.it_since is not None:
                     self.trouble_since_it = True
+                self._grade(verdict, raw, rule, rules[i + 1:])
                 return verdict
         cusum = max(self.cusum_up, self.cusum_down)
+        if cusum > cfg.cusum_h or rec.screen_alarm:
+            self._note_alarm(rec.tick)
         if cusum > cfg.cusum_h:
             return Verdict(rec.tick, "UNKNOWN", "Mass balance drifting",
                            f"The CUSUM of the mass-balance error has reached {cusum:.1f} (alarm at {cfg.cusum_h:.0f}): "
-                           "water is being gained or lost that nothing explains yet.")
+                           "water is being gained or lost that nothing explains yet.",
+                           confidence="Low", evidence=[f"{PHYSICS}: mass balance drifting"])
         if rec.screen_alarm:
-            return Verdict(rec.tick, "UNKNOWN", "Unexplained alarm", f"'{rec.screen_alarm}' with no known signature.")
+            return Verdict(rec.tick, "UNKNOWN", "Unexplained alarm", f"'{rec.screen_alarm}' with no known signature.",
+                           confidence="Low")
         return None
+
+    # --- confidence --------------------------------------------------------
+    def _grade(self, verdict: Verdict, raw: Verdict, rule, later_rules) -> None:
+        """How sure the detector is, from how many INDEPENDENT families of evidence agree with its answer.
+
+            High   two or more families agree, and none points to a different answer
+            Medium one family, steady for at least confidence_steady seconds (or High with a family disagreeing)
+            Low    an early warning (UNKNOWN), or a single family that has only just started saying it
+
+        The answer itself is never changed: the first check that fires still decides. Grading only looks at what
+        the other checks would say this second, and puts back any memory they keep."""
+        cfg, tick = self.cfg, verdict.tick
+        support: dict[str, str] = {}
+        conflicts: list[str] = []
+
+        def count(r_raw: Verdict, family: str) -> None:
+            fused = self._fuse(r_raw)
+            if fused.label == "UNKNOWN":
+                return
+            if fused.label != verdict.label:
+                conflicts.append(f"{family}: {r_raw.culprit} ({fused.label})")
+                return
+            support.setdefault(family, r_raw.culprit)
+            if fused.label != r_raw.label:          # fusion turned it into an attack or an on-site cause
+                if fused.label == "ATTACK" and self.last_it is not None and tick - self.last_it <= cfg.it_window:
+                    support.setdefault(NETWORK, f"an office IT incident has been open since second {self.it_since}")
+                elif fused.label == "ATTACK":
+                    support.setdefault(NETWORK, f"a never-seen-before device joined the control network at second "
+                                                f"{self.last_new_device}")
+                else:
+                    support.setdefault(WITNESS, "someone came on site with no work order just before it began")
+
+        # A family counts only when one of its OWN checks fires. (Counting "backup sensor B agrees" as hard-wired
+        # support for a leak was tried and dropped: during a replay attack the recording also agrees with B.)
+        count(raw, FAMILY[rule.__name__])
+        saved = {name: getattr(self, name) for name in _CHECK_MEMORY}
+        try:
+            for other in later_rules:
+                v = other()
+                if v:
+                    count(v, FAMILY[other.__name__])
+        finally:
+            for name, value in saved.items():
+                setattr(self, name, value)
+
+        # How long this answer has been given (early warnings in between do not break the streak).
+        if verdict.label != "UNKNOWN":
+            if verdict.label != self.steady_label or tick - self.steady_last > cfg.window:
+                self.steady_label, self.steady_since = verdict.label, tick
+            self.steady_last = tick
+        steady = tick - self.steady_since if verdict.label == self.steady_label else 0
+
+        if verdict.label == "UNKNOWN":
+            level = "Low"
+        elif len(support) >= 2:
+            level = "Medium" if conflicts else "High"
+        elif steady >= cfg.confidence_steady:
+            level = "Medium"
+        else:
+            level = "Low"
+        verdict.confidence = level
+        verdict.evidence = [f"{family}: {what}" for family, what in support.items()]
+        verdict.conflicts = conflicts
 
     # --- helpers -----------------------------------------------------------
     def _v(self, label: str, culprit: str, reason: str) -> Verdict:
         return Verdict(self.h[-1].tick, label, culprit, reason)
+
+    def _note_alarm(self, tick: int) -> None:
+        """Keep track of when the current problem began. A verdict after episode_gap quiet seconds starts a new one."""
+        if self.last_alarm is None or tick - self.last_alarm > self.cfg.episode_gap:
+            self.episode_start = tick
+        self.last_alarm = tick
 
     def _fuse(self, v: Verdict) -> Verdict:
         v = self._fuse_network(v)
@@ -148,11 +255,22 @@ class FaultOrAttackDetector:
         network evidence, has an on-site cause. Planned maintenance (a work order) does not count."""
         if v.label not in ("FAULT", "ATTACK") or self.last_unplanned is None:
             return v
+        cfg = self.cfg
         since = v.tick - self.last_unplanned
-        network = (self.last_new_device is not None and v.tick - self.last_new_device <= self.cfg.access_window) \
-            or any(r.unknown_writes for r in self.h[-self.cfg.access_window:])
-        if since > self.cfg.access_window or network:
+        network = (self.last_new_device is not None and v.tick - self.last_new_device <= cfg.access_window) \
+            or any(r.unknown_writes for r in self.h[-cfg.access_window:])
+        if network:
             return v
+        if since > cfg.access_window:
+            # The visit is old news, but if THIS problem began during or soon after it and has not stopped since,
+            # it is still the visitor's doing (the same idea as for a new network device in _fuse_network).
+            began = None if self.episode_start is None else self.episode_start - self.last_unplanned
+            if began is None or not -cfg.window <= began <= cfg.access_window:
+                return v
+            return Verdict(v.tick, "PHYSICAL", "On-site tampering or theft",
+                           f"It looks like '{v.culprit.lower()}', but this problem began while someone was on site with "
+                           f"no work order, {v.tick - self.episode_start} s ago, and has not stopped since. Nothing "
+                           "unusual happened on the network. Check the spot and the CCTV.")
         return Verdict(v.tick, "PHYSICAL", "On-site tampering or theft",
                        f"It looks like '{v.culprit.lower()}', but it began {since} s after someone came on site with no "
                        "work order, and nothing unusual happened on the network. Check the spot and the CCTV.")
@@ -169,6 +287,14 @@ class FaultOrAttackDetector:
         if v.label != "FAULT" or self.last_new_device is None:
             return v
         since = v.tick - self.last_new_device
+        began = None if self.episode_start is None else self.episode_start - self.last_new_device
+        if since > self.cfg.fusion_window and began is not None and 0 <= began <= self.cfg.fusion_window:
+            # The new device is old news by now, but this problem BEGAN right after it appeared and has not
+            # stopped since. A symptom does not stop being part of the attack because the evidence got old.
+            return Verdict(v.tick, "ATTACK", "Disguised attack",
+                           f"It looks like '{v.culprit.lower()}', but this problem began {began} s after a "
+                           f"never-seen-before device joined the control network, {v.tick - self.episode_start} s ago, "
+                           "and has not stopped since. Worn-out equipment does not bring new devices with it.")
         if since > self.cfg.fusion_window:
             return v
         return Verdict(v.tick, "ATTACK", "Disguised attack",
@@ -280,6 +406,11 @@ class FaultOrAttackDetector:
         else:
             self.track_misses = 0
 
+    def _b(self, r: Record) -> float | None:
+        """Sensor B as a witness. After tampering it is treated as missing: a rewired sensor can agree with a lie.
+        (The controller itself may still use B; the detector's own copy of the controller reads r.sensor_b directly.)"""
+        return None if self.b_tampered is not None else r.sensor_b
+
     def _residuals(self, n: int) -> list[float]:
         """Mass-balance errors for the last n seconds, skipping seconds with no usable reading."""
         return [x for x in self.res[-n:] if x is not None]
@@ -363,7 +494,7 @@ class FaultOrAttackDetector:
         if not r.power_ok:
             return None                       # a power cut darkens sensors too; that is the power rule's job
         signs = []
-        if self.b_seen and old.sensor_b is not None and r.sensor_b is None:
+        if self.b_seen and self._b(old) is not None and self._b(r) is None:
             signs.append("backup sensor B went dead")
         if r.gas_alarm and not old.gas_alarm:
             signs.append("the gas detector alarmed")
@@ -438,7 +569,8 @@ class FaultOrAttackDetector:
         if abs(recent) > 0.5 * abs(sum(res)):
             return None                       # most of it arrived in the last few seconds: sudden, not slow
         r, old = self.h[-1], self.h[-w]
-        if r.sensor_b is not None and r.sensor is not None and abs(r.sensor_b - r.sensor) > 3:
+        b = self._b(r)
+        if b is not None and r.sensor is not None and abs(b - r.sensor) > 3:
             return None                       # the sensors disagree: the drift and witness rules decide
         if rate < -cfg.slow_limit:
             loss = f"{-rate:.2f}%/s of product goes missing that no meter accounts for"
@@ -451,7 +583,7 @@ class FaultOrAttackDetector:
                                f"{loss.capitalize()} outside the bund, starting soon after someone came on site with no "
                                "work order. A leak that size would collect in the bund; this looks like a tap.")
             return self._v("FAULT", "Slow leak", f"{loss.capitalize()}, steadily. A slow leak outside the bund, "
-                           "typically corrosion" + ("" if r.sensor_b is not None else ", or a slowly drifting sensor") + ".")
+                           "typically corrosion" + ("" if b is not None else ", or a slowly drifting sensor") + ".")
         if rate > cfg.slow_limit:
             if r.interface is not None and old.interface is not None and r.interface - old.interface > 0.5 * w * cfg.slow_limit:
                 return self._v("FAULT", "Water getting into the tank",
@@ -623,8 +755,8 @@ class FaultOrAttackDetector:
         if not a_closes:
             return None                      # sensor A's own physics is broken: the fault rules decide
         # Witness 1: backup sensor B gains water that the (forged) pump feedback and valve cannot explain.
-        gains = [b.sensor_b - a.sensor_b - self._expected_change(a) for a, b in zip(recent, recent[1:])
-                 if a.sensor_b is not None and b.sensor_b is not None and a.outflow is not None]
+        gains = [self._b(b) - self._b(a) - self._expected_change(a) for a, b in zip(recent, recent[1:])
+                 if self._b(a) is not None and self._b(b) is not None and a.outflow is not None]
         if len(gains) == n and mean(gains) > cfg.witness_gain:
             return self._v("ATTACK", "Consistent forgery",
                            f"Sensor A, the motor feedback and the valve all tell the same healthy story, but hard-wired "
@@ -675,8 +807,8 @@ class FaultOrAttackDetector:
 
     def _drift_vs_backup(self):
         cfg = self.cfg
-        pairs = [(r.sensor_b - r.sensor) for r in self.h[-cfg.window:]
-                 if r.sensor is not None and r.sensor_b is not None]
+        pairs = [(self._b(r) - r.sensor) for r in self.h[-cfg.window:]
+                 if r.sensor is not None and self._b(r) is not None]
         if len(pairs) < cfg.window or abs(pairs[-1]) < 3:
             return None
         slope, scatter = self._line_fit(pairs)
@@ -708,7 +840,8 @@ class FaultOrAttackDetector:
         if abs(err) <= cfg.residual_limit or scatter > cfg.straight_limit:
             return None
         r = self.h[-1]
-        if r.sensor_b is not None and r.sensor is not None and abs(r.sensor_b - r.sensor) < 2:
+        b = self._b(r)
+        if b is not None and r.sensor is not None and abs(b - r.sensor) < 2:
             return self._v("FAULT", "Leak",
                            f"Both sensors agree, yet {abs(err):.1f}%/s of water goes missing that no meter accounts for. "
                            "The error is steady, as a physical leak is.")

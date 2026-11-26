@@ -13,3 +13,12 @@ data/hai/
 
 # Old copy of the website
 web/index_v1_backup.html
+
+# Admin console audit logs (one file per session)
+admin_logs/
+
+# Hackathon organiser documents: kept on the laptop only, not published.
+# Named one by one, because docs/ also holds our own files that ARE published
+# (for example docs/Brunei OT Incident Playbook.md).
+docs/Hibiscus X BIL - LEAP 2026 Problem Statements.pdf
+docs/WhatsApp Image 2026-11-05 at 7.02.52 PM.jpeg

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import random
+from dataclasses import replace
 
 from pathlib import Path
 
@@ -76,7 +77,27 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--web", action="store_true",
                    help="record every demonstration for the website (writes web/data.js; open web/index.html). "
                         "Use --eval SEEDS to change how many seeds the results section scores (default 20)")
+    adm = p.add_argument_group("admin console (control-room screen in your browser)")
+    adm.add_argument("--admin", action="store_true",
+                     help="start the admin console: live readings, the detector's verdicts, incidents to acknowledge "
+                          "and resolve, and a lab panel for drills. Open the address it prints in a browser")
+    adm.add_argument("--replay-csv", metavar="FILE.csv",
+                     help="with --admin: play back recorded plant readings instead of the simulator")
+    adm.add_argument("--columns", metavar="ours=theirs,...",
+                     help="with --replay-csv: map your file's column names, e.g. sensor=LIT101,pump_cmd=P101")
+    adm.add_argument("--make-sample", metavar="FILE.csv",
+                     help="write a simulated run (pick it with --fault/--attack) as a CSV the console can replay")
+    adm.add_argument("--port", type=int, default=8800, help="with --admin: web port (default 8800)")
+    adm.add_argument("--host", default="127.0.0.1",
+                     help="with --admin: 0.0.0.0 lets other computers connect (then --password is required)")
+    adm.add_argument("--password", help="with --admin: ask for this password in the browser")
+    adm.add_argument("--no-backup", action="store_true",
+                     help="with --admin: simulate a tank WITHOUT backup sensor B (it is fitted by default)")
+    adm.add_argument("--no-log", action="store_true", help="with --admin: do not write the audit log to admin_logs/")
     args = p.parse_args(argv)
+    if args.admin or args.make_sample:
+        _admin(p, args, argv)
+        return
     if args.eval is not None and args.eval < 1:
         p.error("--eval needs at least 1 seed")
     if args.web:
@@ -200,6 +221,44 @@ def main(argv: list[str] | None = None) -> None:
         plot_single(sim, records, args.plot, args.save)
 
 
+def _admin(p: argparse.ArgumentParser, args: argparse.Namespace, argv: list[str] | None) -> None:
+    from .admin.server import DEFAULT_LOG_DIR, build, parse_columns, serve
+    from .admin.sources import write_sample_csv
+
+    given = argv if argv is not None else __import__("sys").argv[1:]
+    cfg = Config()
+    if args.realistic:
+        cfg = learn_from_normal(realistic(cfg))
+    if args.make_sample:
+        if args.admin:
+            p.error("--make-sample writes a file and stops; run --admin --replay-csv FILE afterwards")
+        try:
+            cfg = replace(cfg, ticks=args.ticks, inject_at=args.inject_at)
+            n = write_sample_csv(args.make_sample, cfg, args.fault or args.attack, args.seed,
+                                 backup=not args.no_backup, mode=args.mode)
+        except (ValueError, OSError) as e:
+            p.error(str(e))
+        print(f"Wrote {n} seconds to {args.make_sample}. Replay it with:")
+        print(f'  python "FAULT OR ATTACK.py" --admin --replay-csv {args.make_sample}'
+              + (" --realistic" if args.realistic else ""))
+        return
+    if args.fault or args.attack:
+        p.error("--admin starts a healthy plant; start faults and attacks from the console's lab panel")
+    # The live demo's default speed is 8x; a control-room screen runs in real time unless asked otherwise.
+    speed = args.speed if any(a == "--speed" or a.startswith("--speed=") for a in given) else 1.0
+    if not 0.1 <= speed <= 50:
+        p.error("--speed must be between 0.1 and 50 for the console")
+    try:
+        engine = build(cfg, args.replay_csv, parse_columns(args.columns), speed=speed,
+                       backup=not args.no_backup, seed=args.seed, log_dir=None if args.no_log else DEFAULT_LOG_DIR)
+    except (ValueError, OSError) as e:
+        p.error(str(e))
+    try:
+        serve(engine, args.host, args.port, args.password)
+    except OSError as e:
+        p.error(f"cannot start the web server on {args.host}:{args.port}: {e}")
+
+
 def _ask(prompt: str, choices: list[str]) -> int | None:
     """Show numbered choices and return the index picked, or None to go back."""
     for i, text in enumerate(choices, start=1):
@@ -244,6 +303,7 @@ def _menu_loop() -> None:
         "Accuracy dashboard for both plants (takes a few minutes; saves accuracy_dashboard.png)",
         "Check against REAL plant data (HAI dataset, test day 1 and 2)",
         "Build the website (records every demonstration; takes a few minutes)",
+        "Admin console: control-room screen in your browser (http://127.0.0.1:8800)",
         "Switch plant: simple on/off pump  <->  realistic PID valve",
     ]
     while True:
@@ -277,6 +337,8 @@ def _menu_loop() -> None:
         elif choice == 6:
             runs = [["--web"]]
         elif choice == 7:
+            runs = [["--admin"] + plant_flag]
+        elif choice == 8:
             realistic_plant = not realistic_plant
             continue
         for argv in runs:

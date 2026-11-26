@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fault or Attack · Control room</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%222%22 y=%221%22 width=%2212%22 height=%2214%22 rx=%222%22 fill=%22%2320374a%22/%3E%3Crect x=%222%22 y=%228%22 width=%2212%22 height=%227%22 rx=%221%22 fill=%22%235f97c2%22/%3E%3C/svg%3E">
+<style>
+/* Same palette as the project website (its dark side): a control room runs dark so alarms stand out. */
+:root {
+  color-scheme: dark;
+  --bg: #0d1114; --panel: #161d22; --panel-2: #1d262d; --line: #2f3b44; --line-2: #3d4b55;
+  --ink: #e9ecee; --ink-2: #bcc4ca; --muted: #8f9aa3;
+  --water: #5f97c2; --water-soft: #20374a;
+  --fault: #e6a54a; --fault-soft: #3a2c16;
+  --attack: #f2658a; --attack-soft: #43202b;
+  --physical: #c38df0; --physical-soft: #33224a;
+  --unknown: #a598ec; --unknown-soft: #2c2748;
+  --it: #6cc3c9; --it-soft: #173539;
+  --ok: #86bb8e; --ok-soft: #1f3324;
+  --radius: 10px;
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); }
+button, select, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* top bar */
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 18px;
+         border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+.brand { font-weight: 600; letter-spacing: .01em; margin-right: auto; }
+.brand span { color: var(--muted); font-weight: 400; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+        border: 1px solid var(--line-2); font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.live { background: var(--ok); box-shadow: 0 0 0 3px #86bb8e33; }
+.dot.down { background: var(--attack); }
+header label { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+header input[type=text] { width: 150px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 6px; }
+
+main { padding: 14px 18px 40px; display: grid; gap: 14px; max-width: 1500px; margin: 0 auto; }
+
+/* status banner */
+.banner { border-radius: var(--radius); padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+          gap: 10px 28px; border: 1px solid var(--line); background: var(--ok-soft); border-left: 8px solid var(--ok); }
+.banner h1 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: .02em; color: var(--ok); }
+.banner .culprit { font-size: 18px; margin-top: 2px; }
+.banner .reason { color: var(--ink-2); margin-top: 6px; }
+.banner .act { font-size: 14px; color: var(--ink-2); }
+.banner .act b { color: var(--ink); display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.banner .act p { margin: 0 0 8px; }
+.banner.FAULT { background: var(--fault-soft); border-left-color: var(--fault); } .banner.FAULT h1 { color: var(--fault); }
+.banner.ATTACK { background: var(--attack-soft); border-left-color: var(--attack); } .banner.ATTACK h1 { color: var(--attack); }
+.banner.PHYSICAL { background: var(--physical-soft); border-left-color: var(--physical); } .banner.PHYSICAL h1 { color: var(--physical); }
+.banner.UNKNOWN { background: var(--unknown-soft); border-left-color: var(--unknown); } .banner.UNKNOWN h1 { color: var(--unknown); }
+.banner.IT { background: var(--it-soft); border-left-color: var(--it); } .banner.IT h1 { color: var(--it); }
+/* confidence: how many independent families of evidence agree (detector.py, _grade) */
+.conf { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; font-size: 14px; }
+.conf .lvl { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; padding: 2px 10px 2px 8px;
+             border-radius: 999px; background: #0d111488; border: 1px solid var(--line-2); }
+.conf .bars { display: inline-flex; gap: 2px; align-items: flex-end; }
+.conf .bars i { width: 4px; border-radius: 1px; background: var(--line-2); }
+.conf .bars i:nth-child(1) { height: 6px; } .conf .bars i:nth-child(2) { height: 9px; } .conf .bars i:nth-child(3) { height: 12px; }
+.conf .bars i.on { background: var(--ink); }
+.conf ul { list-style: none; margin: 2px 0 0; padding: 0; width: 100%; color: var(--ink-2); font-size: 13.5px; }
+.conf li::before { content: "✓ "; color: var(--ok); }
+.conf li.against::before { content: "✗ "; color: var(--fault); }
+.banner.ATTACK.unacked { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px #f2658a55; } }
+@media (prefers-reduced-motion: reduce) { .banner.ATTACK.unacked { animation: none; } }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+.panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600;
+            display: flex; align-items: center; gap: 10px; }
+.panel h2 .grow { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.grid-top { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 14px; }
+.grid-read { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.grid-bottom { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 1100px) { .grid-bottom { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .grid-read { grid-template-columns: 1fr; } .banner { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .grid-top { grid-template-columns: 1fr; } main { padding: 10px; } header { position: static; } }
+
+/* tank */
+#tank { width: 100%; height: 290px; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); margin-top: 6px; }
+.sw { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+
+/* trend */
+#trend { width: 100%; height: 290px; display: block; }
+
+/* readings */
+dl.read { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 0; font-size: 14px; }
+dl.read dt { color: var(--muted); }
+dl.read dd { margin: 0; text-align: right; }
+.pill { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12.5px; background: var(--panel-2); color: var(--ink-2); }
+.pill.on { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--fault-soft); color: var(--fault); }
+.pill.bad { background: var(--attack-soft); color: var(--attack); }
+#spark { width: 100%; height: 40px; display: block; margin: 8px 0 2px; }
+
+/* incidents */
+.tabs { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.tabs button { background: none; border: 0; padding: 3px 12px; cursor: pointer; font-size: 13px; color: var(--ink-2); }
+.tabs button[aria-pressed=true] { background: var(--panel-2); color: var(--ink); }
+.inc { border: 1px solid var(--line); border-left: 6px solid var(--line-2); border-radius: 8px; margin-bottom: 10px; background: var(--panel-2); }
+.inc.FAULT { border-left-color: var(--fault); } .inc.ATTACK { border-left-color: var(--attack); }
+.inc.PHYSICAL { border-left-color: var(--physical); } .inc.UNKNOWN { border-left-color: var(--unknown); } .inc.IT { border-left-color: var(--it); }
+.inc.resolved { opacity: .62; }
+.inc summary { list-style: none; cursor: pointer; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; }
+.inc summary::-webkit-details-marker { display: none; }
+.inc .t { font-weight: 600; }
+.inc .lab { font-size: 12px; letter-spacing: .06em; font-weight: 700; margin-right: 6px; }
+.inc.FAULT .lab { color: var(--fault); } .inc.ATTACK .lab { color: var(--attack); } .inc.PHYSICAL .lab { color: var(--physical); }
+.inc.UNKNOWN .lab { color: var(--unknown); } .inc.IT .lab { color: var(--it); }
+.inc .meta { font-size: 12.5px; color: var(--muted); grid-column: 1 / -1; }
+.st { font-size: 12px; padding: 1px 9px; border-radius: 999px; align-self: start; white-space: nowrap; }
+.st.new { background: var(--attack-soft); color: var(--attack); } .st.acknowledged { background: var(--fault-soft); color: var(--fault); }
+.st.resolved { background: var(--ok-soft); color: var(--ok); }
+.inc .body { padding: 0 12px 12px; font-size: 14px; }
+.inc .body p { margin: 6px 0; }
+.inc .body .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; display: block; }
+.hist { list-style: none; margin: 8px 0; padding: 0; font-size: 13px; border-left: 2px solid var(--line-2); }
+.hist li { padding: 2px 0 2px 10px; color: var(--ink-2); }
+.hist li .who { color: var(--ink); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+textarea { width: 100%; min-height: 54px; resize: vertical; background: var(--bg); border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 8px; }
+select, input[type=number] { background: var(--bg); border: 1px solid var(--line-2); border-radius: 6px; padding: 4px 8px; }
+.btn { background: var(--panel); border: 1px solid var(--line-2); border-radius: 7px; padding: 5px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--water); }
+.btn.primary { background: var(--water); border-color: var(--water); color: #08131c; font-weight: 600; }
+.btn.danger { border-color: var(--attack); color: var(--attack); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.empty { color: var(--muted); padding: 18px 4px; text-align: center; }
+
+/* scripted demos (demos.py): three one-click scenarios for presenting */
+.demo-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .demo-cards { grid-template-columns: 1fr; } }
+.demo-card { text-align: left; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px;
+             padding: 10px 12px; cursor: pointer; display: grid; gap: 4px; }
+.demo-card:hover { border-color: var(--water); }
+.demo-card[aria-pressed=true] { border-color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--ink-2); }
+.demo-card .n { font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.demo-card .ti { font-weight: 600; font-size: 16px; }
+.demo-card .tag { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; }
+.demo-card .tag.FAULT { color: var(--fault); } .demo-card .tag.ATTACK { color: var(--attack); }
+.demo-card .story { font-size: 13.5px; color: var(--ink-2); }
+.demo-now { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); font-size: 14.5px; }
+.demo-now[hidden] { display: none; }
+.demo-now.ok { background: var(--ok-soft); } .demo-now.bad { background: var(--attack-soft); }
+.demo-now b.k { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 6px; }
+
+/* lab */
+.lab-panel { border-style: dashed; }
+.lab-panel .row label { font-size: 13px; color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; }
+.drill { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); font-size: 14px; }
+.drill.ok { background: var(--ok-soft); } .drill.bad { background: var(--attack-soft); }
+
+#toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--attack-soft); color: var(--ink);
+         border: 1px solid var(--attack); padding: 8px 14px; border-radius: 8px; display: none; z-index: 9; max-width: 90vw; }
+footer { color: var(--muted); font-size: 12.5px; text-align: center; padding: 6px 18px 24px; }
+footer a { color: var(--ink-2); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Fault or Attack <span>· Control room</span></div>
+  <span class="chip" id="src" title="Where the readings come from">…</span>
+  <span class="chip num" id="clock">second –</span>
+  <span class="chip" id="conn"><span class="dot"></span><span>connecting</span></span>
+  <label>Operator <input type="text" id="who" placeholder="your name" maxlength="60" autocomplete="name"></label>
+  <label><input type="checkbox" id="sound"> Alarm sound</label>
+</header>
+
+<main>
+  <section class="banner" id="banner" aria-live="polite">
+    <div>
+      <h1 id="b-label">NORMAL</h1>
+      <div class="culprit" id="b-culprit">The detector sees nothing wrong</div>
+      <div class="conf" id="b-conf" hidden></div>
+      <div class="reason" id="b-reason">Every physics, network and site check is passing.</div>
+      <div class="row" id="b-buttons"></div>
+    </div>
+    <div class="act" id="b-act">
+      <b>What to do</b><p>Keep watching. Nothing to act on.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="demo" hidden>
+    <h2>Demo scenarios <span class="grow muted small">One click: fresh healthy tank, 15 s of normal running, then the scenario</span></h2>
+    <div class="demo-cards" id="d-cards"></div>
+    <div class="demo-now" id="d-now" hidden>
+      <span id="d-msg" aria-live="polite"></span>
+      <button class="btn" type="button" id="d-end">End and reveal</button>
+      <div id="d-watch"></div>
+    </div>
+  </section>
+
+  <div class="grid-top">
+    <section class="panel">
+      <h2>Tank</h2>
+      <svg id="tank" viewBox="0 0 200 300" role="img" aria-label="Tank level"></svg>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--water)"></i>Sensor A</span>
+        <span><i class="sw" style="background:var(--ok)"></i>Sensor B</span>
+        <span id="lg-real" hidden><i class="sw" style="background:#fff"></i>Real level</span>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Level, up to the last 10 minutes <span class="grow muted small" id="trend-note"></span></h2>
+      <canvas id="trend" aria-label="Level trend chart"></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--water)"></i>Sensor A</span>
+        <span><i class="sw" style="background:var(--ok)"></i>Sensor B (hard-wired)</span>
+        <span id="lg-real2" hidden><i class="sw" style="background:#fff"></i>Real level (lab only)</span>
+        <span><i class="sw" style="background:#5f97c255;height:9px"></i><span id="lg-pump">Pump commanded on</span></span>
+        <span><i class="sw" style="background:var(--attack);height:9px"></i>Detector verdict</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-read">
+    <section class="panel"><h2>Process</h2><dl class="read" id="r-process"></dl></section>
+    <section class="panel"><h2>Control network</h2><canvas id="spark" aria-label="Packets per second"></canvas><dl class="read" id="r-net"></dl></section>
+    <section class="panel"><h2>Site (hard-wired)</h2><dl class="read" id="r-site"></dl></section>
+  </div>
+
+  <div class="grid-bottom">
+    <section class="panel">
+      <h2>Incidents <span class="muted" id="inc-count"></span>
+        <span class="grow"><span class="tabs" role="group" aria-label="Show">
+          <button type="button" data-f="open" aria-pressed="true">Open</button>
+          <button type="button" data-f="all" aria-pressed="false">All</button></span></span>
+      </h2>
+      <div id="incidents"><div class="empty">No incidents yet.</div></div>
+    </section>
+
+    <div style="display:grid;gap:14px">
+      <section class="panel lab-panel" id="lab" hidden>
+        <h2>Lab: drills and training</h2>
+        <p class="small muted" style="margin:0 0 6px">Starts a fault or attack on the simulated plant so operators can practise.
+          Tick <i>hidden</i> to run a blind drill: the scenario stays secret until you end it.</p>
+        <div class="row">
+          <select id="l-scn" aria-label="Scenario"></select>
+          <select id="l-mode" aria-label="How long it lasts"></select>
+        </div>
+        <div class="row">
+          <label>Starts in <input type="number" id="l-lead" value="30" min="1" max="600" style="width:72px"> s</label>
+          <label><input type="checkbox" id="l-hidden"> hidden</label>
+          <button class="btn primary" id="l-start" type="button">Start drill</button>
+          <button class="btn" id="l-end" type="button" disabled>End and reveal</button>
+        </div>
+        <div id="l-drill"></div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+        <div class="row">
+          <label>Speed <select id="l-speed">
+            <option value="0.5">0.5×</option><option value="1">1× (real time)</option><option value="2">2×</option>
+            <option value="5">5×</option><option value="10">10×</option><option value="20">20×</option></select></label>
+          <button class="btn" id="l-pause" type="button">Pause</button>
+          <button class="btn" id="l-reset" type="button">Reset plant</button>
+        </div>
+        <div class="row"><label><input type="checkbox" id="l-real"> Show the real level (plant truth the control room cannot see)</label></div>
+      </section>
+
+      <section class="panel">
+        <h2>Shift record</h2>
+        <p class="small" style="margin:0 0 8px">Every acknowledgement, note and closure is written to the audit log on the server, with the time and the operator's name.</p>
+        <a class="btn" href="/api/export.csv" download>Download incidents (CSV)</a>
+        <p class="small muted" id="src-detail" style="margin:10px 0 0"></p>
+      </section>
+    </div>
+  </div>
+</main>
+<footer>Fault or Attack · student project for Hibiscus LEAP 2026 · not a certified safety system. Report cyber incidents in Brunei to BruCERT (245 8001, cert@brucert.org.bn).</footer>
+<div id="toast" role="alert"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage off: fine */ } },
+};
+const COLORS = {FAULT: "#e6a54a", ATTACK: "#f2658a", PHYSICAL: "#c38df0", UNKNOWN: "#a598ec", IT: "#6cc3c9"};
+const WORDS = {
+  FAULT: "Equipment fault: send a technician",
+  ATTACK: "Cyberattack: call the incident team",
+  PHYSICAL: "Physical incident: send site security",
+  UNKNOWN: "Unexplained: check in the field",
+  IT: "Office IT incident: plant is fine, keep running",
+};
+
+let S = null, trend = [], lastT = null, logVersion = -1, incidents = [], outcomes = [];
+let filter = "open", lastAlarms = null, failures = 0, showReal = false, openIds = new Set();
+
+$("who").value = store.get("foa-who") || "";
+$("who").addEventListener("input", () => store.set("foa-who", $("who").value.trim()));
+$("sound").checked = store.get("foa-sound") === "1";
+$("sound").addEventListener("change", () => { store.set("foa-sound", $("sound").checked ? "1" : "0"); if ($("sound").checked) beep(660, .08); });
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast.h); toast.h = setTimeout(() => (t.style.display = "none"), 4500);
+}
+
+async function api(path, body) {
+  const opt = body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)};
+  const r = await fetch(path, opt);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+let audio = null;
+function beep(freq = 880, dur = .25) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.value = freq; o.connect(g); g.connect(audio.destination);
+    g.gain.setValueAtTime(.12, audio.currentTime); g.gain.exponentialRampToValueAtTime(.001, audio.currentTime + dur);
+    o.start(); o.stop(audio.currentTime + dur);
+  } catch (e) { /* no audio: the banner still shows it */ }
+}
+
+/* ---------- polling ---------- */
+async function poll() {
+  try {
+    const s = await api("/api/state" + (lastT == null ? "" : "?since=" + lastT));
+    failures = 0;
+    setConn(true);
+    if (lastT != null && s.tick != null && s.tick < lastT) { trend = []; }   // server restarted
+    trend = trend.concat(s.trend).slice(-600);
+    if (trend.length) lastT = trend[trend.length - 1].t;
+    S = s;
+    render();
+    if (s.log_version !== logVersion) await loadIncidents();
+    if (lastAlarms != null && s.alarms > lastAlarms && s.headline && ["ATTACK", "PHYSICAL"].includes(s.headline.label) && $("sound").checked) {
+      beep(880, .3); setTimeout(() => beep(660, .3), 350);
+    }
+    lastAlarms = s.alarms;
+  } catch (e) {
+    failures++;
+    if (failures > 2) setConn(false);
+  }
+  const fast = S && S.speed > 2;
+  setTimeout(poll, fast ? 500 : 1000);
+}
+function setConn(ok) {
+  $("conn").innerHTML = `<span class="dot ${ok ? "live" : "down"}"></span><span>${ok ? (S && S.paused ? "paused" : S && S.finished ? "data ended" : "live") : "no connection"}</span>`;
+}
+
+/* ---------- render ---------- */
+function render() {
+  const s = S;
+  $("src").textContent = s.source.kind === "simulated" ? "SIMULATED PLANT" : "RECORDED DATA";
+  $("src").title = s.source.name;
+  $("src-detail").textContent = s.source.name + (s.source.kind === "recorded" ? ` · ${s.source.rows} rows · columns: ${s.source.columns.join(", ")}` : (s.source.backup_sensor ? " · backup sensor B fitted" : " · no backup sensor B"));
+  $("clock").textContent = s.tick == null ? "waiting for data" : `second ${s.tick} · ${s.speed}×`;
+  $("lab").hidden = !s.source.lab;
+  renderBanner(s);
+  renderReadings(s);
+  drawTank(s);
+  drawTrend(s);
+  drawSpark();
+  renderLab(s);
+  renderDemo(s);
+  const h = s.headline;
+  document.title = (h ? `${h.label} · ` : "") + "Fault or Attack · Control room";
+}
+
+// Replace an element's HTML only when it changes. The page redraws every second; recreating a button that often
+// can swallow a click that lands mid-redraw.
+function setOnce(el, html) { if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; } }
+
+function renderBanner(s) {
+  const h = s.headline, b = $("banner");
+  b.className = "banner" + (h ? " " + h.label : "") + (h && h.status === "new" ? " unacked" : "");
+  if (!h) {
+    $("b-label").textContent = s.tick == null ? "STARTING" : "NORMAL";
+    const now = s.verdict_now;
+    $("b-culprit").textContent = "The detector sees nothing wrong";
+    $("b-reason").textContent = s.counts.open ? `${s.counts.open} incident(s) still open below: the detector no longer sees them, but nobody has closed them.` : "Every physics, network and site check is passing.";
+    $("b-act").innerHTML = "<b>What to do</b><p>Keep watching. Nothing to act on.</p>";
+    setOnce($("b-buttons"), "");
+    $("b-conf").hidden = true;
+    return;
+  }
+  $("b-label").textContent = h.label;
+  $("b-culprit").textContent = `${WORDS[h.label] || ""} · ${h.culprit}`;
+  renderConfidence(h);
+  $("b-reason").textContent = h.reason;
+  $("b-act").innerHTML = `<b>What to do</b><p>${esc(h.action)}</p><b>Playbook</b><p>${esc(h.playbook)}</p>` + (h.mitre ? `<b>MITRE ATT&amp;CK for ICS</b><p>${esc(h.mitre)}</p>` : "");
+  setOnce($("b-buttons"), h.status === "new"
+    ? `<button class="btn primary" type="button" data-ack="${h.id}">Acknowledge incident #${h.id}</button>`
+    : `<span class="muted small">Incident #${h.id} · ${esc(h.status)}</span>`);
+}
+
+const CONF_BARS = { High: 3, Medium: 2, Low: 1 };
+const CONF_WHY = {
+  High: "independent kinds of evidence agree",
+  Medium: "one kind of evidence, holding steady",
+  Low: "early or single sign: confirm before acting drastically",
+};
+function confBadge(level) {
+  if (!CONF_BARS[level]) return "";
+  const bars = [1, 2, 3].map((n) => `<i class="${n <= CONF_BARS[level] ? "on" : ""}"></i>`).join("");
+  return `<span class="lvl"><span class="bars" aria-hidden="true">${bars}</span>${esc(level)} confidence</span>`;
+}
+function renderConfidence(h) {
+  const el = $("b-conf");
+  if (!CONF_BARS[h.confidence]) { el.hidden = true; return; }
+  const n = h.evidence.length;
+  const why = h.confidence === "High" ? `${n} ${CONF_WHY.High}` : h.conflicts.length ? "evidence is split" : CONF_WHY[h.confidence];
+  el.innerHTML = `${confBadge(h.confidence)}<span class="muted small">${esc(why)}</span>
+    <ul>${h.evidence.map((e) => `<li>${esc(e)}</li>`).join("")}${h.conflicts.map((c) => `<li class="against">${esc(c)}</li>`).join("")}</ul>`;
+  el.hidden = false;
+}
+
+function yes(v, on = "yes", off = "no", cls = "on") { return v == null ? '<span class="muted">n/a</span>' : v ? `<span class="pill ${cls}">${on}</span>` : `<span class="pill">${off}</span>`; }
+function num(v, unit = "%", d = 1) { return v == null ? '<span class="muted">no signal</span>' : `<span class="num">${Number(v).toFixed(d)}${unit}</span>`; }
+
+function renderReadings(s) {
+  const p = s.plant;
+  if (!p) return;
+  const pid = s.config.control === "pid";
+  const ab = p.sensor != null && p.sensor_b != null ? Math.abs(p.sensor - p.sensor_b) : null;
+  $("r-process").innerHTML = `
+    <dt>Sensor A</dt><dd>${num(p.sensor)}</dd>
+    <dt>Sensor B (backup)</dt><dd>${p.sensor_b == null ? '<span class="muted">not fitted / lost</span>' : num(p.sensor_b)}</dd>
+    <dt>A vs B</dt><dd>${ab == null ? '<span class="muted">n/a</span>' : `<span class="pill ${ab > 8 ? "bad" : ab > 4 ? "warn" : ""}">${ab.toFixed(1)} apart</span>`}</dd>
+    ${pid ? `<dt>Valve command</dt><dd>${num(p.valve_cmd)}</dd><dt>Valve position</dt><dd>${num(p.valve_pos)}</dd>`
+          : `<dt>Pump command</dt><dd>${yes(p.pump_cmd, "ON", "off")}</dd><dt>Motor feedback</dt><dd>${yes(p.pump_feedback, "running", "stopped")}</dd>`}
+    <dt>Outflow meter</dt><dd>${num(p.outflow, "/s", 2)}</dd>
+    <dt>Power</dt><dd>${yes(p.power_ok, "ok", "LOST", "on").replace('class="pill">LOST', 'class="pill bad">LOST')}</dd>
+    <dt>High-high switch</dt><dd>${yes(p.switch_high, "TRIPPED", "clear", "bad")}</dd>
+    <dt>Low-low switch</dt><dd>${yes(p.switch_low, "TRIPPED", "clear", "bad")}</dd>
+    <dt>Screen alarm</dt><dd>${p.screen_alarm ? `<span class="pill warn">${esc(p.screen_alarm)}</span>` : '<span class="pill">none</span>'}</dd>`;
+  $("r-net").innerHTML = `
+    <dt>Packets / second</dt><dd><span class="num ${p.packets > s.config.normal_packets * 5 ? "pill bad" : ""}">${p.packets}</span> <span class="muted small">(normal ≈${s.config.normal_packets})</span></dd>
+    <dt>New device this second</dt><dd>${yes(p.new_devices > 0, "NEW DEVICE", "none", "bad")}</dd>
+    <dt>Writes from unknown host</dt><dd>${yes(p.unknown_writes > 0, p.unknown_writes + " write(s)", "none", "bad")}</dd>
+    <dt>Controller probe</dt><dd>${yes(p.probe, "probing", "idle")}</dd>
+    <dt>Office IT incident</dt><dd>${yes(p.it_alert, "OPEN", "none", "warn")}</dd>`;
+  $("r-site").innerHTML = `
+    <dt>Gate / door event</dt><dd>${yes(p.door, "now", "none", "warn")}</dd>
+    <dt>Work order open</dt><dd>${yes(p.work_order, "yes", "no")}</dd>
+    <dt>Tamper switch</dt><dd>${yes(p.tamper, "OPEN", "closed", "bad")}</dd>
+    <dt>Overfill trip bypassed</dt><dd>${yes(p.bypass, "BYPASSED", "no", "bad")}</dd>
+    <dt>Gas detector</dt><dd>${yes(p.gas_alarm, "ALARM", "clear", "bad")}</dd>
+    <dt>Bund (spill wall)</dt><dd>${num(p.bund, "%", 2)}</dd>
+    <dt>Water layer</dt><dd>${num(p.interface, "%", 2)}</dd>
+    <dt>Pipe wall left</dt><dd>${num(p.wall, "%", 1)}</dd>`;
+}
+
+function drawTank(s) {
+  const p = s.plant, svg = $("tank");
+  if (!p) return;
+  const y = (v) => 270 - 2.5 * Math.max(0, Math.min(100, v));
+  const a = p.sensor, b = p.sensor_b, real = showReal ? p.real : null;
+  const fill = a != null ? a : (b != null ? b : 0);
+  let g = `<rect x="45" y="20" width="100" height="250" rx="6" fill="none" stroke="#3d4b55" stroke-width="3"/>
+    <rect x="47" y="${y(fill)}" width="96" height="${Math.max(0, 270 - y(fill) - 2)}" fill="#20374a"/>`;
+  for (const [v, t] of [[s.config.high_alarm, "HI"], [s.config.low_alarm, "LO"]])
+    g += `<line x1="45" x2="145" y1="${y(v)}" y2="${y(v)}" stroke="#8f9aa3" stroke-dasharray="3 4"/><text x="49" y="${y(v) - 3}" fill="#8f9aa3" font-size="9">${t} ${v}%</text>`;
+  if (a != null) g += `<line x1="38" x2="152" y1="${y(a)}" y2="${y(a)}" stroke="#5f97c2" stroke-width="3"/><text x="2" y="${y(a) + 4}" fill="#5f97c2" font-size="12" font-weight="600">${a.toFixed(1)}</text>`;
+  if (b != null) g += `<polygon points="146,${y(b)} 158,${y(b) - 6} 158,${y(b) + 6}" fill="#86bb8e"/><text x="161" y="${y(b) + 4}" fill="#86bb8e" font-size="11">B ${b.toFixed(1)}</text>`;
+  if (real != null) g += `<line x1="47" x2="143" y1="${y(real)}" y2="${y(real)}" stroke="#fff" stroke-width="1.5" stroke-dasharray="6 3"/>`;
+  const pid = s.config.control === "pid";
+  const pumpText = pid ? `valve ${p.valve_pos == null ? "?" : p.valve_pos.toFixed(0) + "%"}` : (p.pump_cmd ? "pump ON" : "pump off");
+  g += `<text x="95" y="292" text-anchor="middle" fill="${(pid ? p.valve_pos > 1 : p.pump_cmd) ? "#5f97c2" : "#8f9aa3"}" font-size="13" font-weight="600">${pumpText}</text>`;
+  if (p.switch_high) g += `<text x="95" y="14" text-anchor="middle" fill="#f2658a" font-size="12" font-weight="700">HIGH-HIGH SWITCH</text>`;
+  svg.innerHTML = g;
+  svg.setAttribute("aria-label", `Sensor A ${a == null ? "no signal" : a.toFixed(1) + "%"}, sensor B ${b == null ? "none" : b.toFixed(1) + "%"}`);
+  $("lg-real").hidden = !showReal;
+}
+
+function sizeCanvas(c) {
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  if (c.width !== Math.round(r.width * d) || c.height !== Math.round(r.height * d)) { c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); }
+  const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  return [ctx, r.width, r.height];
+}
+
+function drawTrend(s) {
+  const [ctx, W, H] = sizeCanvas($("trend"));
+  ctx.clearRect(0, 0, W, H);
+  const L = 34, R = 8, T = 8, B = 20;
+  const pts = trend.slice(-600);
+  if (!pts.length) return;
+  const n = Math.max(120, pts.length);   // grow to 10 minutes as history builds up
+  const t1 = pts[pts.length - 1].t, t0 = t1 - n + 1;
+  const X = (t) => L + (W - L - R) * (t - t0) / (n - 1), Y = (v) => T + (H - T - B) * (1 - v / 100);
+  ctx.font = "11px system-ui"; ctx.fillStyle = "#8f9aa3"; ctx.strokeStyle = "#2f3b44"; ctx.lineWidth = 1;
+  for (const v of [0, 25, 50, 75, 100]) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(W - R, Y(v)); ctx.stroke(); ctx.fillText(v + "%", 2, Y(v) + 4); }
+  ctx.setLineDash([3, 4]); ctx.strokeStyle = "#8f9aa3";
+  for (const v of [s.config.high_alarm, s.config.low_alarm]) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(W - R, Y(v)); ctx.stroke(); }
+  ctx.setLineDash([]);
+  const pid = s.config.control === "pid";
+  $("lg-pump").textContent = pid ? "Valve position (shade)" : "Pump commanded on";
+  const w = Math.max(1, (W - L - R) / n + .5);
+  for (const p of pts) {
+    const on = pid ? (p.valve || 0) / 100 : (p.pump ? 1 : 0);
+    if (on > 0) { ctx.fillStyle = `rgba(95,151,194,${.08 + .22 * on})`; ctx.fillRect(X(p.t), T, w, H - T - B); }
+    if (p.v) { ctx.fillStyle = COLORS[p.v] || "#fff"; ctx.fillRect(X(p.t), H - B + 3, w, 6); }
+  }
+  const line = (key, color, width, dash) => {
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []); ctx.beginPath();
+    let pen = false;
+    for (const p of pts) { const v = p[key]; if (v == null) { pen = false; continue; } pen ? ctx.lineTo(X(p.t), Y(v)) : ctx.moveTo(X(p.t), Y(v)); pen = true; }
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  line("b", "#86bb8e", 1.5);
+  if (showReal) line("real", "#ffffff", 1.5, [6, 3]);
+  line("a", "#5f97c2", 2);
+  $("trend-note").textContent = `seconds ${Math.max(0, t0)}–${t1}`;
+  $("lg-real2").hidden = !showReal;
+}
+
+function drawSpark() {
+  const [ctx, W, H] = sizeCanvas($("spark"));
+  ctx.clearRect(0, 0, W, H);
+  const pts = trend.slice(-120);
+  if (!pts.length) return;
+  const max = Math.max(20, ...pts.map((p) => p.pk || 0));
+  ctx.strokeStyle = "#6cc3c9"; ctx.lineWidth = 1.5; ctx.beginPath();
+  pts.forEach((p, i) => { const x = W * i / 119, y = H - 2 - (H - 4) * (p.pk || 0) / max; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.stroke();
+  ctx.fillStyle = "#8f9aa3"; ctx.font = "10px system-ui"; ctx.fillText(`packets/s, last 2 min (max ${max})`, 2, 10);
+}
+
+/* ---------- incidents ---------- */
+async function loadIncidents() {
+  const d = await api("/api/incidents");
+  incidents = d.items; outcomes = d.outcomes; logVersion = d.version;
+  renderIncidents();
+}
+function fmtTime(iso) { try { return new Date(iso).toLocaleTimeString(); } catch (e) { return iso; } }
+
+function renderIncidents() {
+  const list = incidents.filter((i) => filter === "all" || i.status !== "resolved");
+  const open = incidents.filter((i) => i.status !== "resolved").length;
+  $("inc-count").textContent = `${open} open · ${incidents.length} total`;
+  // Keep what the operator is typing: don't redraw while a text box inside the list has focus.
+  const active = document.activeElement;
+  if (active && $("incidents").contains(active) && (active.tagName === "TEXTAREA" || active.tagName === "SELECT")) return;
+  if (!list.length) { $("incidents").innerHTML = `<div class="empty">${filter === "open" ? "No open incidents." : "No incidents yet."}</div>`; return; }
+  $("incidents").innerHTML = list.map((i) => {
+    const seen = i.active && i.status !== "resolved" ? "detector still sees it" : i.status === "resolved" ? (i.active ? "closed, detector still sees it" : "closed") : "no longer seen";
+    return `<details class="inc ${i.label} ${i.status}" data-id="${i.id}" ${openIds.has(i.id) ? "open" : ""}>
+      <summary>
+        <span class="t"><span class="lab">${i.label}</span>#${i.id} ${esc(i.culprit)}${i.also_seen.length ? ` <span class="muted small">+ ${esc(i.also_seen.join(", "))}</span>` : ""}${i.secondary ? ' <span class="muted small">(second finding)</span>' : ""}</span>
+        <span class="st ${i.status}">${i.status}</span>
+        <span class="meta">${i.confidence ? esc(i.confidence) + " confidence · " : ""}opened ${fmtTime(i.opened)} · second ${i.first_tick}–${i.last_tick} · ${seen}${i.owner ? " · " + esc(i.owner) : ""}${i.outcome ? " · " + esc(i.outcome) : ""}${i.drill ? " · " + esc(i.drill) : ""}</span>
+      </summary>
+      <div class="body">
+        <p><span class="k">Evidence</span>${esc(i.reason)}</p>
+        ${i.confidence ? `<p><span class="k">Confidence</span>${esc(i.confidence)}${i.evidence.length ? ": " + esc(i.evidence.join(" · ")) : ""}${i.conflicts.length ? `<br><span class="muted">Points elsewhere: ${esc(i.conflicts.join(" · "))}</span>` : ""}</p>` : ""}
+        <p><span class="k">What to do</span>${esc(i.action)}</p>
+        <p><span class="k">Playbook</span>${esc(i.playbook)}${i.mitre ? `<br><span class="k" style="margin-top:6px">MITRE ATT&amp;CK for ICS</span>${esc(i.mitre)}` : ""}</p>
+        <ul class="hist">${i.history.map((h) => `<li>${fmtTime(h.time)} <span class="who">${esc(h.who)}</span>: ${esc(h.what)}${h.note && h.who !== "detector" ? ` – “${esc(h.note)}”` : ""}</li>`).join("")}</ul>
+        ${i.status === "resolved" ? "" : `
+        <textarea placeholder="Note (what you checked, who you called)…" aria-label="Note for incident ${i.id}"></textarea>
+        <div class="row">
+          ${i.status === "new" ? `<button class="btn primary" type="button" data-ack="${i.id}">Acknowledge</button>` : ""}
+          <button class="btn" type="button" data-note="${i.id}">Add note</button>
+          <select aria-label="Outcome">${outcomes.map((o) => `<option${o === defaultOutcome(i.label) ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>
+          <button class="btn ${i.label === "ATTACK" ? "danger" : ""}" type="button" data-resolve="${i.id}">Resolve</button>
+        </div>`}
+      </div></details>`;
+  }).join("");
+}
+function defaultOutcome(label) {
+  return {ATTACK: "Confirmed attack", FAULT: "Confirmed fault", PHYSICAL: "Confirmed physical incident"}[label] || "Other";
+}
+
+function who() {
+  const w = $("who").value.trim();
+  if (!w) { $("who").focus(); throw new Error("Type your name in the Operator box first, so the log shows who did it."); }
+  return w;
+}
+
+document.addEventListener("toggle", (e) => {
+  const d = e.target;
+  if (d.matches && d.matches("details.inc")) { const id = +d.dataset.id; d.open ? openIds.add(id) : openIds.delete(id); }
+}, true);
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  try {
+    if (t.dataset.ack) {
+      const box = t.closest("details")?.querySelector("textarea");
+      await api(`/api/incidents/${t.dataset.ack}/ack`, {who: who(), note: box ? box.value : ""});
+      if (box) box.value = "";
+    } else if (t.dataset.note) {
+      const box = t.closest("details").querySelector("textarea");
+      await api(`/api/incidents/${t.dataset.note}/note`, {who: who(), note: box.value});
+      box.value = "";
+    } else if (t.dataset.resolve) {
+      const d = t.closest("details"), box = d.querySelector("textarea"), sel = d.querySelector("select");
+      await api(`/api/incidents/${t.dataset.resolve}/resolve`, {who: who(), outcome: sel.value, note: box.value});
+      box.value = "";
+      t.blur();
+    } else if (t.dataset.f) {
+      filter = t.dataset.f;
+      document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b === t)));
+      renderIncidents();
+      return;
+    } else return;
+    document.activeElement && document.activeElement.blur();
+    await loadIncidents();
+  } catch (err) { toast(err.message); }
+});
+
+/* ---------- lab ---------- */
+let labLoaded = false, lastDrillShown = null;
+async function loadLab() {
+  const d = await api("/api/scenarios");
+  if (!d.lab) return;
+  $("l-scn").innerHTML = d.groups.map((g) => `<optgroup label="${esc(g.group)}">${g.items.map((i) => `<option value="${i.key}">${esc(i.name)}</option>`).join("")}</optgroup>`).join("");
+  $("l-mode").innerHTML = d.modes.map((m) => `<option value="${m}">${m}</option>`).join("");
+  labLoaded = true;
+}
+function renderLab(s) {
+  if (!s.source.lab) return;
+  if (!labLoaded) loadLab();
+  const sp = $("l-speed");
+  if (document.activeElement !== sp) sp.value = String(s.speed);
+  $("l-pause").textContent = s.paused ? "Resume" : "Pause";
+  $("l-start").disabled = !!s.drill;
+  $("l-end").disabled = !s.drill;
+  let html = "";
+  if (s.drill) {
+    const d = s.drill;
+    const when = d.starts_in > 0 ? `starts in ${d.starts_in} s` : `running for ${-d.starts_in} s`;
+    html = d.hidden ? `<div class="drill"><b>Blind drill</b> ${when}. The scenario is hidden until you end it.</div>`
+      : `<div class="drill"><b>${esc(d.name)}</b> (${esc(d.kind)}, ${esc(d.mode)}) ${when}.<br><span class="small">${esc(d.what_happens)}</span><br><span class="small muted">Caught by: ${esc(d.how_caught)}</span></div>`;
+  } else if (s.drill_result) {
+    const r = s.drill_result;
+    html = `<div class="drill ${r.right ? "ok" : "bad"}"><b>It was: ${esc(r.name)}</b> (${esc(r.kind)}). The detector ${esc(r.verdict)}: <b>${r.right ? "right" : "wrong"}</b>.${r.false_alarms_before ? ` ${r.false_alarms_before} alarm(s) came before the drill started.` : ""}<br><span class="small">${esc(r.how_caught)}</span><br><span class="small muted">The plant has been reset for the next drill.</span></div>`;
+  }
+  if (html !== lastDrillShown) { $("l-drill").innerHTML = html; lastDrillShown = html; }
+}
+/* ---------- scripted demos ---------- */
+let demos = null, lastDemoShown = null, lastCardsKey = null;
+async function loadDemos() {
+  demos = [];                                  // don't ask twice while the first request is out
+  try { demos = (await api("/api/demos")).demos; } catch (err) { demos = null; }
+}
+function renderDemo(s) {
+  $("demo").hidden = !s.source.lab;
+  if (!s.source.lab) return;
+  if (demos === null) { loadDemos(); return; }
+  const active = s.demo ? s.demo.id : "";
+  const cardsKey = demos.map((d) => d.id).join() + "|" + active;
+  if (cardsKey !== lastCardsKey) {
+    $("d-cards").innerHTML = demos.map((d, i) => `<button type="button" class="demo-card" data-demo="${esc(d.id)}" aria-pressed="${d.id === active}">
+        <span class="n">Demo ${i + 1} · <span class="tag ${esc(d.kind)}">${esc(d.kind)}</span></span>
+        <span class="ti">${esc(d.title)}</span><span class="story">${esc(d.story)}</span></button>`).join("");
+    lastCardsKey = cardsKey;
+  }
+  // Only the text changes each second; the End button stays the same element, so a click never lands mid-redraw.
+  let msg = "", watch = "", cls = "demo-now", running = false;
+  const d = s.demo;
+  if (d && s.drill) {
+    running = true;
+    msg = s.drill.starts_in > 0 ? `Normal running. <b>${esc(d.title)}</b> starts in <span class="num">${s.drill.starts_in}</span> s.`
+                                : `<b>${esc(d.title)}</b> running for <span class="num">${-s.drill.starts_in}</span> s.`;
+    watch = `<b class="k">Watch for</b>${esc(d.watch)}`;
+  } else if (d && s.drill_result && s.drill_result.key === d.scenario) {
+    const r = s.drill_result;
+    cls += r.right ? " ok" : " bad";
+    msg = `<b>${esc(d.title)}</b>: it was ${esc(r.name)} (${esc(r.kind)}). The detector ${esc(r.verdict)}: <b>${r.right ? "right" : "wrong"}</b>. The plant is healthy again.`;
+  }
+  const key = [msg, watch, cls].join("|");
+  if (key === lastDemoShown) return;
+  lastDemoShown = key;
+  $("d-now").hidden = !msg;
+  $("d-now").className = cls;
+  $("d-msg").innerHTML = msg;
+  $("d-watch").innerHTML = watch;
+  $("d-end").hidden = !running;
+}
+$("d-cards").addEventListener("click", async (e) => {
+  const card = e.target.closest("[data-demo]");
+  if (!card) return;
+  if (S && S.drill && !confirm("A drill is running. End it and start this demo?")) return;
+  try { await api("/api/demo/start", {id: card.dataset.demo}); } catch (err) { toast(err.message); }
+});
+$("d-end").addEventListener("click", async () => {
+  try { await api("/api/drill/end", {}); } catch (err) { toast(err.message); }
+});
+
+$("l-start").addEventListener("click", async () => {
+  try {
+    await api("/api/drill/start", {key: $("l-scn").value, mode: $("l-mode").value, lead: +$("l-lead").value || 30, hidden: $("l-hidden").checked});
+  } catch (err) { toast(err.message); }
+});
+$("l-end").addEventListener("click", async () => { try { await api("/api/drill/end", {}); } catch (err) { toast(err.message); } });
+$("l-speed").addEventListener("change", async () => { try { await api("/api/control", {action: "speed", speed: +$("l-speed").value}); } catch (err) { toast(err.message); } });
+$("l-pause").addEventListener("click", async () => { try { await api("/api/control", {action: S && S.paused ? "resume" : "pause"}); } catch (err) { toast(err.message); } });
+$("l-reset").addEventListener("click", async () => {
+  if (!confirm("Reset the simulated plant to a healthy tank? The incident log is kept.")) return;
+  try { await api("/api/control", {action: "reset"}); } catch (err) { toast(err.message); }
+});
+$("l-real").addEventListener("change", () => { showReal = $("l-real").checked; if (S) render(); });
+window.addEventListener("resize", () => S && render());
+
+poll();
+</script>
+</body>
+</html>

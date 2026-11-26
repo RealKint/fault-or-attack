@@ -1,40 +1,4 @@
 {
- "fedd596db3c7b213": {
-  "flatline_ticks": 10,
-  "replay_match": 10,
-  "flat_runs_limit": 3,
-  "link_limit": 0.3511958639663354
- },
- "644acb2c2475f881": {
-  "flatline_ticks": 10,
-  "replay_match": 10,
-  "flat_runs_limit": 3,
-  "link_limit": 0.3511958639663354
- },
- "77bb5e8cf0590304": {
-  "flatline_ticks": 10,
-  "replay_match": 10,
-  "flat_runs_limit": 3,
-  "link_limit": 0.3511958639663354
- },
- "a6f836aaee951c08": {
-  "flatline_ticks": 10,
-  "replay_match": 10,
-  "flat_runs_limit": 3,
-  "link_limit": 0.3511958639663354
- },
- "ede11d7566e42626": {
-  "flatline_ticks": 10,
-  "replay_match": 10,
-  "flat_runs_limit": 3,
-  "link_limit": 0.3511958639663354
- },
- "268623f8d0fb2d6e": {
-  "flatline_ticks": 9,
-  "replay_match": 10,
-  "flat_runs_limit": 4,
-  "link_limit": 0.3659623204601481
- },
  "e046c516da1b35d4": {
   "flatline_ticks": 9,
   "replay_match": 10,
@@ -42,6 +6,42 @@
   "link_limit": 0.3659623204601481
  },
  "89fad02e01c0ebd2": {
+  "flatline_ticks": 9,
+  "replay_match": 10,
+  "flat_runs_limit": 4,
+  "link_limit": 0.3659623204601481
+ },
+ "48a17fe2282f77f9": {
+  "flatline_ticks": 9,
+  "replay_match": 10,
+  "flat_runs_limit": 4,
+  "link_limit": 0.3659623204601481
+ },
+ "a387d66acf177019": {
+  "flatline_ticks": 9,
+  "replay_match": 10,
+  "flat_runs_limit": 4,
+  "link_limit": 0.3659623204601481
+ },
+ "16f814f1cdece4b7": {
+  "flatline_ticks": 9,
+  "replay_match": 10,
+  "flat_runs_limit": 4,
+  "link_limit": 0.3659623204601481
+ },
+ "c6182ba575dafe4c": {
+  "flatline_ticks": 9,
+  "replay_match": 10,
+  "flat_runs_limit": 4,
+  "link_limit": 0.3659623204601481
+ },
+ "8143e2dfa2933769": {
+  "flatline_ticks": 9,
+  "replay_match": 10,
+  "flat_runs_limit": 4,
+  "link_limit": 0.3659623204601481
+ },
+ "f4475a882794dad6": {
   "flatline_ticks": 9,
   "replay_match": 10,
   "flat_runs_limit": 4,
