@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from .config import PROJECT_DIR, Config, realistic
 from .detector import FaultOrAttackDetector, diagnose
-from .evaluation import _verdict_ok, print_eval
+from .evaluation import _verdict_ok, print_eval, print_healthy
 from .hai_validation import HaiDataError, hai_main
 from .learning import learn_from_normal
 from .plant import Record, TankSimulator
@@ -51,7 +51,8 @@ def _record_run(sim: TankSimulator, records: list[Record], cfg: Config) -> dict:
     }
 
 
-def export_web(out_dir: str = "web", seeds: int = 3, eval_seeds: int = 20, hai: bool = True) -> None:
+def export_web(out_dir: str = "web", seeds: int = 3, eval_seeds: int = 20, hai: bool = True,
+               healthy_hours: int = 120) -> None:
     """Write web/data.js for the website: recorded runs of every scenario on both plants,
     the accuracy evaluation, and the real HAI results (if the dataset is downloaded)."""
     import json
@@ -87,6 +88,11 @@ def export_web(out_dir: str = "web", seeds: int = 3, eval_seeds: int = 20, hai: 
         print(f"Scoring both plants over {eval_seeds} seeds for the results section (a few minutes)...")
         for plant, cfg in plants.items():
             data["eval"][plant] = print_eval(cfg, eval_seeds)
+        if healthy_hours:
+            # The long false-alarm test: healthy days with rain, gas-detector tests, planned visits and the
+            # daily temperature swing (about ten minutes per plant).
+            print(f"Counting false alarms over {healthy_hours} healthy hours per plant (several minutes)...")
+            data["healthy"] = {plant: print_healthy(cfg, healthy_hours) for plant, cfg in plants.items()}
     if hai:
         for test in (hai_dir / "test1.csv", hai_dir / "test2.csv"):
             try:

@@ -2759,8 +2759,11 @@ Reported to the police: not yet`)}</pre>
       for (const n of [1, 2]) $(`score${n}-t`).textContent = "Not measured yet: run --web with --eval SEEDS.";
       $("score-note").textContent = "The tanks fill up once results are exported."; return; }
     const pct = (r) => 100 * r.right / r.total;
-    const fa = E.simple.long_alarms + E.realistic.long_alarms + E.simple.short_false + E.realistic.short_false;
-    const hours = E.simple.hours + E.realistic.hours;
+    // Prefer the long healthy-day test (rain, gas-detector tests, planned visits, daily temperature swing) when exported.
+    const H = D.healthy && D.healthy.simple && D.healthy.realistic ? D.healthy : null;
+    const fa = H ? H.simple.alarms + H.realistic.alarms
+                 : E.simple.long_alarms + E.realistic.long_alarms + E.simple.short_false + E.realistic.short_false;
+    const hours = H ? H.simple.hours + H.realistic.hours : E.simple.hours + E.realistic.hours;
     const faults = Object.values(E.realistic.confusion.FAULT).reduce((a, b) => a + b, 0);
     // One decimal place (same rounding as the dashboard), never rounded up to a perfect 100.
     const per100 = (r) => (r.right < r.total && pct(r) >= 99.95 ? "99.9" : pct(r).toFixed(1));
